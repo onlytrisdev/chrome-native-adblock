@@ -73,6 +73,7 @@ public sealed class PatternScanTests
     }
 
     [Fact]
+    [Trait("Category", "Integration")]
     public void TestScanRealChromeDllIfPresent()
     {
         string? chromeDll = null;
@@ -110,6 +111,7 @@ public sealed class PatternScanTests
     }
 
     [Fact]
+    [Trait("Category", "Integration")]
     public void TestPatternScanSmokeRunner()
     {
         string? chromeExe = null;
