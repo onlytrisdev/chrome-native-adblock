@@ -1,0 +1,155 @@
+! Title: ABPVN Basic Fallback
+! Description: Essential Vietnamese ad network blocking and cosmetic rules for VnExpress, DanTri, TuoiTre, Kenh14, VietNamNet, ThanhNien, ZNews, 24h.
+! Homepage: https://abpvn.com/
+
+! ==========================================
+! 1. Vietnamese Ad Networks & Trackers
+! ==========================================
+||eclick.vn^
+||s.eclick.vn^
+||t.eclick.vn^
+||st.eclick.vn^
+||e.eclick.vn^
+||static.eclick.vn^
+||media.fpt.vn^
+||ad.fpt.vn^
+||admicro.vn^
+||media1.admicro.vn^
+||static.admicro.vn^
+||lg1.logging.admicro.vn^
+||ambientdigital.com.vn^
+||ambientplatform.vn^
+||ants.vn^
+||antsomi.com^
+||blueserving.com^
+||adtrue.com^
+||microad.vn^
+||novanet.vn^
+||adplus.vn^
+||polyad.net^
+||adtima.vn^
+||adtimab2c.zadn.vn^
+||vads.vietnamnet.vn^
+||qc.dantri.com.vn^
+||innity.com^
+||innity.net^
+||vietnamads.vn^
+||yomedia.vn^
+
+! ==========================================
+! 2. VnExpress.net Cosmetic Rules
+! ==========================================
+vnexpress.net###banner_top
+vnexpress.net##.banner_top
+vnexpress.net##.box-category-adv
+vnexpress.net##.banner-center
+vnexpress.net###box_ad_middle
+vnexpress.net##.box-ad
+vnexpress.net##.sticky-banner
+vnexpress.net##.inner-adv
+vnexpress.net##.zone-ad
+vnexpress.net##.wrapper_ad
+vnexpress.net##.ad_container
+vnexpress.net##.adv-box
+vnexpress.net##.block_ad
+vnexpress.net##.banner_ad
+vnexpress.net##.adv-sticky
+vnexpress.net###admbackground
+vnexpress.net###rich-media-banner-ads
+vnexpress.net###supper_masthead
+vnexpress.net##div[id^="ads_"]
+vnexpress.net##div[id^="ad_"]
+vnexpress.net##div[id*="_ad_"]
+vnexpress.net##div[id^="_ads_"]
+vnexpress.net##div[id*="_ads_"]
+vnexpress.net##div[class*="box-category-adv"]
+vnexpress.net##div[class*="banner-ads"]
+vnexpress.net##div[class*="wrapper-ad"]
+vnexpress.net##div[class*="adv-"]
+vnexpress.net##.adv-holder
+vnexpress.net##.box_ad_bottom
+vnexpress.net##.banner-ads
+vnexpress.net##div[data-role="ad"]
+vnexpress.net###_ads_bg_top
+vnexpress.net###_ads_box_business
+vnexpress.net###_footer_ads
+vnexpress.net##div[id*="google_ads"]
+
+! ==========================================
+! 3. DanTri.com.vn Cosmetic Rules
+! ==========================================
+dantri.com.vn###bannerMasthead
+dantri.com.vn###desktop-home-top-page
+dantri.com.vn###mobile-home-middle-1
+dantri.com.vn###mobile-home-middle-2
+dantri.com.vn###mobile-home-top-page
+dantri.com.vn##.ad-container
+dantri.com.vn##.ad-wrapper
+dantri.com.vn##.ad-slot
+dantri.com.vn##div[id^="ad-"]
+dantri.com.vn##div[class*="ad-container"]
+dantri.com.vn##div[class*="banner-ads"]
+dantri.com.vn##.banner-ads
+
+! ==========================================
+! 4. TuoiTre.vn Cosmetic Rules
+! ==========================================
+tuoitre.vn###LeaderBoardTop
+tuoitre.vn###admbackground
+tuoitre.vn##.banner-top
+tuoitre.vn##.box-ad
+tuoitre.vn##.box-category-adv
+tuoitre.vn##.ad-slot
+tuoitre.vn##div[id^="adm_"]
+tuoitre.vn##div[id^="ad_"]
+tuoitre.vn##.banner-ads
+
+! ==========================================
+! 5. Kenh14.vn Cosmetic Rules
+! ==========================================
+kenh14.vn##.ads-sponsor
+kenh14.vn##.wrapper_ad
+kenh14.vn##.wrapper-ad
+kenh14.vn##.ad-slot
+kenh14.vn##div[id^="adm_"]
+kenh14.vn##div[class*="adm_"]
+kenh14.vn##.adm-banner
+kenh14.vn##.banner-ads
+
+! ==========================================
+! 6. VietNamNet.vn Cosmetic Rules
+! ==========================================
+vietnamnet.vn##.vmcadszone
+vietnamnet.vn##.zone-ad
+vietnamnet.vn##.adv-box
+vietnamnet.vn##div[id^="vads_"]
+vietnamnet.vn##div[class*="vads-"]
+vietnamnet.vn##.banner-ads
+
+! ==========================================
+! 7. ThanhNien.vn Cosmetic Rules
+! ==========================================
+thanhnien.vn##.asd-headt
+thanhnien.vn##.detail__foru
+thanhnien.vn##.banner-ads
+thanhnien.vn##div[id^="adm_"]
+thanhnien.vn##.zone-ad
+
+! ==========================================
+! 8. ZNews.vn Cosmetic Rules
+! ==========================================
+znews.vn###Zingnews_SiteHeader
+znews.vn##.banner-slider-wrapper
+znews.vn##.znews-banner
+znews.vn##div[id^="adtima_"]
+znews.vn##.banner-ads
+
+! ==========================================
+! 9. 24h.com.vn Cosmetic Rules
+! ==========================================
+24h.com.vn###background_bg_link
+24h.com.vn###subRightAboveHome
+24h.com.vn##.adv-24h-mid
+24h.com.vn##.box-2coll-24h-t.box-2coll-24h>.mar-auto.container>.row>.col-300
+24h.com.vn##div[id^="ad_"]
+24h.com.vn##.banner-ads

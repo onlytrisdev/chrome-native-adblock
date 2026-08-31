@@ -1,0 +1,5 @@
+[Adblock Plus 2.0]
+! Deterministic local smoke-test rules.
+||ads.example^$script
+@@||ads.example/allowed.js$script
+*/blocked.png

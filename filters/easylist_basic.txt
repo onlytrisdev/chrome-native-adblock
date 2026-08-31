@@ -1,0 +1,8 @@
+! EasyList Basic
+! Core ads, trackers, banners
+||doubleclick.net^
+||googleadservices.com^
+||google-analytics.com^
+! Basic banners
+##.ad-banner
+##.ad-wrapper

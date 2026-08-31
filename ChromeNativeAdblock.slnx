@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="launcher/ChromeNativeAdblock.Launcher/ChromeNativeAdblock.Launcher.csproj" />
+  <Project Path="gui/ChromeNativeAdblock.Gui/ChromeNativeAdblock.Gui.csproj" />
+  <Project Path="tests/ChromeNativeAdblock.EngineTests/ChromeNativeAdblock.EngineTests.csproj" />
+</Solution>
