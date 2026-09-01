@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  windows-x64:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Rust format
+        run: cargo fmt --all -- --check
+
+      - name: Rust tests
+        run: cargo test --workspace --locked
+
+      - name: Build native release DLL
+        run: cargo build --workspace --release --locked
+
+      - name: Restore .NET
+        run: dotnet restore .\ChromeNativeAdblock.slnx
+
+      - name: Portable .NET tests
+        run: dotnet test .\ChromeNativeAdblock.slnx -c Release --no-restore --filter "Category!=Integration"
+
+      - name: Build solution
+        run: dotnet build .\ChromeNativeAdblock.slnx -c Release --no-restore

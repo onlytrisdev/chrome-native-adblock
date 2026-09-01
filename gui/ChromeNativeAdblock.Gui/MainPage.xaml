@@ -1,0 +1,687 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Page
+    x:Class="ChromeNativeAdblock.Gui.MainPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:local="using:ChromeNativeAdblock.Gui"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d">
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <Grid MaxWidth="1020" Padding="32,24,32,32" RowSpacing="18">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+            <!-- 1. Header & Language -->
+            <Grid ColumnSpacing="24">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <StackPanel Spacing="6">
+                    <TextBlock x:Name="HeroTitleText" FontSize="28" FontWeight="SemiBold" Text="Chrome Native Adblock" />
+                    <TextBlock x:Name="HeroSubtitleText"
+                               MaxWidth="750"
+                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                               TextWrapping="Wrap" />
+                </StackPanel>
+                <StackPanel Grid.Column="1" VerticalAlignment="Top" Spacing="4">
+                    <TextBlock x:Name="LanguageLabelText"
+                               FontSize="12"
+                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                               Text="Ngôn ngữ / Language" />
+                    <ComboBox x:Name="LanguageComboBox"
+                              MinWidth="150"
+                              SelectionChanged="LanguageComboBox_SelectionChanged">
+                        <ComboBoxItem Tag="vi" Content="Tiếng Việt" />
+                        <ComboBoxItem Tag="en" Content="English" />
+                        <ComboBoxItem Tag="zh" Content="简体中文" />
+                    </ComboBox>
+                </StackPanel>
+            </Grid>
+
+            <!-- 2. Chrome Status Card -->
+            <Border Grid.Row="1"
+                    Padding="20"
+                    Background="{StaticResource CardBackgroundBrush}"
+                    BorderBrush="{StaticResource CardBorderBrush}"
+                    BorderThickness="1"
+                    CornerRadius="12">
+                <Grid ColumnSpacing="16" RowSpacing="10">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <Border x:Name="AnalysisStatusDot"
+                            Width="14"
+                            Height="14"
+                            VerticalAlignment="Center"
+                            Background="#FF10B981"
+                            CornerRadius="7" />
+
+                    <StackPanel Grid.Column="1" Spacing="2">
+                        <TextBlock x:Name="AnalysisStatusText" FontSize="16" FontWeight="SemiBold" Text="Google Chrome đã sẵn sàng" />
+                        <TextBlock x:Name="ChromeVersionText"
+                                   FontSize="13"
+                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                   Text="Version: ..." />
+                    </StackPanel>
+
+                    <ProgressRing x:Name="BusyRing" Grid.Column="2" Width="20" Height="20" IsActive="False" Visibility="Collapsed" />
+
+                    <Border x:Name="RunningBadge"
+                            Grid.Column="2"
+                            Padding="8,3"
+                            VerticalAlignment="Center"
+                            Background="#1E3A5F"
+                            CornerRadius="6"
+                            Visibility="Collapsed">
+                        <TextBlock x:Name="RunningBadgeText"
+                                   FontSize="12"
+                                   FontWeight="SemiBold"
+                                   Foreground="#60A5FA"
+                                   Text="Active" />
+                    </Border>
+
+                    <FontIcon Grid.Row="1" Glyph="&#xE8B7;" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                    <TextBlock x:Name="ChromePathText"
+                               Grid.Row="1"
+                               Grid.Column="1"
+                               Grid.ColumnSpan="2"
+                               FontSize="12"
+                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                               Text="chrome.exe"
+                               TextTrimming="CharacterEllipsis" />
+                </Grid>
+            </Border>
+
+            <!-- 3. Feature Selection Cards (Toggles) -->
+            <Grid Grid.Row="2" ColumnSpacing="14" RowSpacing="14">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+
+                <!-- Toggle 1: Native Adblock -->
+                <Border Padding="18"
+                        Background="{StaticResource CardBackgroundBrush}"
+                        BorderBrush="{StaticResource CardBorderBrush}"
+                        BorderThickness="1"
+                        CornerRadius="12">
+                    <Grid ColumnSpacing="12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <Border Width="36"
+                                Height="36"
+                                VerticalAlignment="Top"
+                                Background="#1E3A5F"
+                                CornerRadius="8">
+                            <FontIcon Glyph="&#xE83D;" FontSize="18" Foreground="#60A5FA" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <StackPanel Grid.Column="1" Spacing="4">
+                            <TextBlock x:Name="Feature1TitleText" FontSize="15" FontWeight="SemiBold" Text="Chặn quảng cáo Native (RAM Hook)" TextWrapping="Wrap" />
+                            <TextBlock x:Name="Feature1DescText"
+                                       FontSize="12"
+                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                       TextWrapping="Wrap" />
+                        </StackPanel>
+                        <ToggleSwitch x:Name="NativeAdblockToggle"
+                                      Grid.Column="2"
+                                      VerticalAlignment="Top"
+                                      IsOn="True"
+                                      Toggled="FeatureToggle_Toggled" />
+                    </Grid>
+                </Border>
+
+                <!-- Toggle 2: Manifest V2 Enabler -->
+                <Border Grid.Column="1"
+                        Padding="18"
+                        Background="{StaticResource CardBackgroundBrush}"
+                        BorderBrush="{StaticResource CardBorderBrush}"
+                        BorderThickness="1"
+                        CornerRadius="12">
+                    <Grid ColumnSpacing="12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <Border Width="36"
+                                Height="36"
+                                VerticalAlignment="Top"
+                                Background="#2D2254"
+                                CornerRadius="8">
+                            <FontIcon Glyph="&#xE74C;" FontSize="18" Foreground="#A78BFA" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <StackPanel Grid.Column="1" Spacing="4">
+                            <TextBlock x:Name="Feature2TitleText" FontSize="15" FontWeight="SemiBold" Text="Bật lại Manifest V2 trong RAM" TextWrapping="Wrap" />
+                            <TextBlock x:Name="Feature2DescText"
+                                       FontSize="12"
+                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                       TextWrapping="Wrap" />
+                        </StackPanel>
+                        <ToggleSwitch x:Name="Mv2EnablerToggle"
+                                      Grid.Column="2"
+                                      VerticalAlignment="Top"
+                                      IsOn="True"
+                                      Toggled="FeatureToggle_Toggled" />
+                    </Grid>
+                </Border>
+
+                <!-- Toggle 3: Auto-update filters & Options -->
+                <Border Grid.Row="1"
+                        Grid.ColumnSpan="2"
+                        Padding="18"
+                        Background="{StaticResource CardBackgroundBrush}"
+                        BorderBrush="{StaticResource CardBorderBrush}"
+                        BorderThickness="1"
+                        CornerRadius="12">
+                    <Grid ColumnSpacing="12" RowSpacing="8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+
+                        <Border Width="36"
+                                Height="36"
+                                VerticalAlignment="Top"
+                                Background="#3B2A10"
+                                CornerRadius="8">
+                            <FontIcon Glyph="&#xE895;" FontSize="18" Foreground="#F59E0B" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+
+                        <StackPanel Grid.Column="1" Spacing="4">
+                            <TextBlock x:Name="Feature3TitleText" FontSize="15" FontWeight="SemiBold" Text="Tự động cập nhật bộ lọc (EasyList, ABPVN, YouTube)" />
+                            <TextBlock x:Name="Feature3DescText"
+                                       FontSize="12"
+                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                       TextWrapping="Wrap" />
+                        </StackPanel>
+                        <ToggleSwitch x:Name="AutoUpdateFiltersToggle"
+                                      Grid.Column="2"
+                                      VerticalAlignment="Top"
+                                      IsOn="True" />
+
+                        <CheckBox x:Name="OpenExtensionsCheckBox"
+                                  Grid.Row="1"
+                                  Grid.Column="1"
+                                  Grid.ColumnSpan="2"
+                                  Content="Mở trang tiện ích (chrome://extensions) khi khởi chạy"
+                                  IsChecked="False" />
+                    </Grid>
+                </Border>
+            </Grid>
+
+            <!-- 4. Filter Management Panel (Collapsible Expander) -->
+            <Expander x:Name="FilterManagementExpander"
+                      Grid.Row="3"
+                      HorizontalAlignment="Stretch"
+                      HorizontalContentAlignment="Stretch"
+                      IsExpanded="False">
+                <Expander.Header>
+                    <Grid HorizontalAlignment="Stretch" ColumnSpacing="16">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <!-- Glowing Accent Icon with Gradient Background -->
+                        <Border Width="40"
+                                Height="40"
+                                VerticalAlignment="Center"
+                                CornerRadius="10"
+                                BorderThickness="1">
+                            <Border.Background>
+                                <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                    <GradientStop Color="#1E3A5F" Offset="0.0" />
+                                    <GradientStop Color="#2563EB" Offset="1.0" />
+                                </LinearGradientBrush>
+                            </Border.Background>
+                            <Border.BorderBrush>
+                                <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                    <GradientStop Color="#60A5FA" Offset="0.0" />
+                                    <GradientStop Color="#3B82F6" Offset="1.0" />
+                                </LinearGradientBrush>
+                            </Border.BorderBrush>
+                            <FontIcon Glyph="&#xE71D;" FontSize="18" Foreground="#FFFFFF" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                            <TextBlock x:Name="FilterPanelHeaderText" FontSize="15" FontWeight="SemiBold" Text="Quản lý Bộ lọc (Filter Lists)" />
+                            <TextBlock x:Name="FilterPanelSubtitleText"
+                                       FontSize="12"
+                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                       Text="Tùy chỉnh danh sách bộ lọc theo chuẩn uBlock Origin..."
+                                       TextWrapping="Wrap" />
+                        </StackPanel>
+
+                        <!-- Modern Glowing Status Pill Badge -->
+                        <Border x:Name="TotalFiltersActivePill"
+                                Grid.Column="2"
+                                Padding="12,6"
+                                VerticalAlignment="Center"
+                                CornerRadius="12"
+                                BorderThickness="1">
+                            <Border.Background>
+                                <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                    <GradientStop Color="#142542" Offset="0.0" />
+                                    <GradientStop Color="#1E3A5F" Offset="1.0" />
+                                </LinearGradientBrush>
+                            </Border.Background>
+                            <Border.BorderBrush>
+                                <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                    <GradientStop Color="#3B82F6" Offset="0.0" />
+                                    <GradientStop Color="#1D4ED8" Offset="1.0" />
+                                </LinearGradientBrush>
+                            </Border.BorderBrush>
+                            <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                                <FontIcon Glyph="&#xE73E;" FontSize="12" Foreground="#60A5FA" VerticalAlignment="Center" />
+                                <TextBlock x:Name="TotalFiltersActiveBadge"
+                                           FontSize="12"
+                                           FontWeight="SemiBold"
+                                           Foreground="#93C5FD"
+                                           VerticalAlignment="Center"
+                                           Text="Đang bật: 9/72 danh sách (220.450 quy tắc)" />
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+                </Expander.Header>
+
+                <StackPanel Margin="0,12,0,4" Spacing="14">
+
+                    <!-- Interactive Preset Selector Bar Card -->
+                    <Border Padding="16,14"
+                            Background="{StaticResource CardBackgroundBrush}"
+                            BorderThickness="1"
+                            CornerRadius="14">
+                        <Border.BorderBrush>
+                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                <GradientStop Color="#2E3748" Offset="0.0" />
+                                <GradientStop Color="#1F2430" Offset="1.0" />
+                            </LinearGradientBrush>
+                        </Border.BorderBrush>
+                        <StackPanel Spacing="10">
+                            <Grid ColumnSpacing="12">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                    <FontIcon Glyph="&#xE74C;" FontSize="14" Foreground="#60A5FA" VerticalAlignment="Center" />
+                                    <TextBlock x:Name="PresetSelectorHeaderText"
+                                               FontSize="13"
+                                               FontWeight="SemiBold"
+                                               Text="Chế độ chặn cấu hình sẵn (Blocking Presets)" />
+                                </StackPanel>
+                                <TextBlock x:Name="PresetActiveDescriptionText"
+                                           Grid.Column="1"
+                                           FontSize="12"
+                                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                           VerticalAlignment="Center"
+                                           Text="" />
+                            </Grid>
+
+                            <!-- Segmented Button Pills Row -->
+                            <Grid x:Name="PresetPillsGrid" ColumnSpacing="8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="1.2*" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+
+                                <!-- Basic Pill -->
+                                <Border x:Name="PresetPill_Basic"
+                                        Grid.Column="0"
+                                        Padding="8,10"
+                                        CornerRadius="8"
+                                        BorderThickness="1"
+                                        Background="#1A1D24"
+                                        BorderBrush="#2E3440"
+                                        Tapped="PresetPill_Basic_Tapped">
+                                    <StackPanel HorizontalAlignment="Center" Spacing="4">
+                                        <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center">
+                                            <FontIcon x:Name="PresetIcon_Basic" Glyph="&#xE945;" FontSize="13" Foreground="#94A3B8" />
+                                            <TextBlock x:Name="PresetText_Basic" FontSize="12" FontWeight="SemiBold" Text="Cơ bản" Foreground="#E2E8F0" />
+                                        </StackPanel>
+                                        <TextBlock x:Name="PresetSub_Basic" FontSize="10" Foreground="#64748B" HorizontalAlignment="Center" Text="~140K quy tắc" />
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- Standard Pill -->
+                                <Border x:Name="PresetPill_Standard"
+                                        Grid.Column="1"
+                                        Padding="8,10"
+                                        CornerRadius="8"
+                                        BorderThickness="1"
+                                        Background="#1A1D24"
+                                        BorderBrush="#2E3440"
+                                        Tapped="PresetPill_Standard_Tapped">
+                                    <StackPanel HorizontalAlignment="Center" Spacing="4">
+                                        <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center">
+                                            <FontIcon x:Name="PresetIcon_Standard" Glyph="&#xE735;" FontSize="13" Foreground="#94A3B8" />
+                                            <TextBlock x:Name="PresetText_Standard" FontSize="12" FontWeight="SemiBold" Text="Tiêu chuẩn (Khuyên dùng)" Foreground="#E2E8F0" />
+                                        </StackPanel>
+                                        <TextBlock x:Name="PresetSub_Standard" FontSize="10" Foreground="#64748B" HorizontalAlignment="Center" Text="~220K quy tắc" />
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- Advanced Pill -->
+                                <Border x:Name="PresetPill_Advanced"
+                                        Grid.Column="2"
+                                        Padding="8,10"
+                                        CornerRadius="8"
+                                        BorderThickness="1"
+                                        Background="#1A1D24"
+                                        BorderBrush="#2E3440"
+                                        Tapped="PresetPill_Advanced_Tapped">
+                                    <StackPanel HorizontalAlignment="Center" Spacing="4">
+                                        <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center">
+                                            <FontIcon x:Name="PresetIcon_Advanced" Glyph="&#xE7BA;" FontSize="13" Foreground="#94A3B8" />
+                                            <TextBlock x:Name="PresetText_Advanced" FontSize="12" FontWeight="SemiBold" Text="Nâng cao" Foreground="#E2E8F0" />
+                                        </StackPanel>
+                                        <TextBlock x:Name="PresetSub_Advanced" FontSize="10" Foreground="#64748B" HorizontalAlignment="Center" Text="~450K quy tắc" />
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- Max Pill -->
+                                <Border x:Name="PresetPill_Max"
+                                        Grid.Column="3"
+                                        Padding="8,10"
+                                        CornerRadius="8"
+                                        BorderThickness="1"
+                                        Background="#1A1D24"
+                                        BorderBrush="#2E3440"
+                                        Tapped="PresetPill_Max_Tapped">
+                                    <StackPanel HorizontalAlignment="Center" Spacing="4">
+                                        <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center">
+                                            <FontIcon x:Name="PresetIcon_Max" Glyph="&#xEA18;" FontSize="13" Foreground="#94A3B8" />
+                                            <TextBlock x:Name="PresetText_Max" FontSize="12" FontWeight="SemiBold" Text="Tối đa" Foreground="#E2E8F0" />
+                                        </StackPanel>
+                                        <TextBlock x:Name="PresetSub_Max" FontSize="10" Foreground="#64748B" HorizontalAlignment="Center" Text="~650K+ quy tắc" />
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- Custom Pill -->
+                                <Border x:Name="PresetPill_Custom"
+                                        Grid.Column="4"
+                                        Padding="8,10"
+                                        CornerRadius="8"
+                                        BorderThickness="1"
+                                        Background="#1A1D24"
+                                        BorderBrush="#2E3440"
+                                        Tapped="PresetPill_Custom_Tapped">
+                                    <StackPanel HorizontalAlignment="Center" Spacing="4">
+                                        <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center">
+                                            <FontIcon x:Name="PresetIcon_Custom" Glyph="&#xE70F;" FontSize="13" Foreground="#94A3B8" />
+                                            <TextBlock x:Name="PresetText_Custom" FontSize="12" FontWeight="SemiBold" Text="Tùy chỉnh" Foreground="#E2E8F0" />
+                                        </StackPanel>
+                                        <TextBlock x:Name="PresetSub_Custom" FontSize="10" Foreground="#64748B" HorizontalAlignment="Center" Text="Theo lựa chọn" />
+                                    </StackPanel>
+                                </Border>
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Sticky Quick Action Buttons Bar -->
+                    <Border Padding="14,10"
+                            Background="{StaticResource CardBackgroundBrush}"
+                            BorderBrush="{StaticResource CardBorderBrush}"
+                            BorderThickness="1"
+                            CornerRadius="8">
+                        <Grid ColumnSpacing="10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Spacing="8">
+                                <ProgressRing x:Name="FiltersBusyRing" Width="16" Height="16" IsActive="False" Visibility="Collapsed" />
+                                <TextBlock x:Name="FilterStatusMessageText"
+                                           FontSize="12"
+                                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                           Text="" />
+                            </StackPanel>
+
+                            <Button x:Name="ApplyChangesButton"
+                                    Grid.Column="1"
+                                    Style="{StaticResource AccentButtonStyle}"
+                                    Click="ApplyChangesButton_Click">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <FontIcon Glyph="&#xE73E;" FontSize="14" />
+                                    <TextBlock x:Name="ApplyChangesButtonText" Text="Áp dụng các thay đổi" />
+                                </StackPanel>
+                            </Button>
+
+                            <Button x:Name="UpdateFiltersButton"
+                                    Grid.Column="2"
+                                    Click="UpdateFiltersButton_Click">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <FontIcon Glyph="&#xE895;" FontSize="14" />
+                                    <TextBlock x:Name="UpdateFiltersButtonText" Text="Cập nhật ngay" />
+                                </StackPanel>
+                            </Button>
+
+                            <Button x:Name="RestoreDefaultsButton"
+                                    Grid.Column="3"
+                                    Click="RestoreDefaultsButton_Click">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <FontIcon Glyph="&#xE777;" FontSize="14" />
+                                    <TextBlock x:Name="RestoreDefaultsButtonText" Text="Khôi phục mặc định" />
+                                </StackPanel>
+                            </Button>
+                        </Grid>
+                    </Border>
+
+                    <!-- Category Groups Container (Built & Refreshed via C#) -->
+                    <StackPanel x:Name="FilterCategoriesContainer" Spacing="10">
+                    </StackPanel>
+                </StackPanel>
+            </Expander>
+            <!-- 5. Action Area -->
+            <StackPanel Grid.Row="4" Spacing="10">
+                <Grid ColumnSpacing="12">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <Button x:Name="LaunchButton"
+                            MinHeight="48"
+                            HorizontalAlignment="Stretch"
+                            Click="LaunchButton_Click"
+                            IsEnabled="False"
+                            Style="{StaticResource AccentButtonStyle}">
+                        <StackPanel HorizontalAlignment="Center" Orientation="Horizontal" Spacing="10">
+                            <FontIcon x:Name="LaunchButtonIcon" FontSize="18" Glyph="&#xE768;" />
+                            <TextBlock x:Name="LaunchButtonText" FontSize="16" FontWeight="SemiBold" Text="Patch &amp; Khởi chạy Chrome" />
+                        </StackPanel>
+                    </Button>
+
+                    <Button x:Name="MinimizeToTrayButton"
+                            Grid.Column="1"
+                            MinHeight="48"
+                            Padding="16,0"
+                            Click="MinimizeToTrayButton_Click">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <FontIcon Glyph="&#xE718;" />
+                            <TextBlock x:Name="MinimizeToTrayButtonText" Text="Ẩn xuống khay hệ thống" />
+                        </StackPanel>
+                    </Button>
+
+                    <Button Grid.Column="2"
+                            MinHeight="48"
+                            Padding="16,0"
+                            Click="RefreshButton_Click">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <FontIcon Glyph="&#xE72C;" />
+                            <TextBlock x:Name="RefreshButtonText" Text="Làm mới" />
+                        </StackPanel>
+                    </Button>
+                </Grid>
+
+                <InfoBar x:Name="ResultInfoBar" IsClosable="True" IsOpen="False" />
+            </StackPanel>
+
+            <!-- 6. Real-time Live Activity Console -->
+            <Border Grid.Row="5"
+                    Padding="16"
+                    Background="{StaticResource CardBackgroundBrush}"
+                    BorderBrush="{StaticResource CardBorderBrush}"
+                    BorderThickness="1"
+                    CornerRadius="12">
+                <Grid RowSpacing="12">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="240" />
+                    </Grid.RowDefinitions>
+
+                    <!-- Console Header & Badges -->
+                    <Grid ColumnSpacing="10">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+
+                        <TextBlock x:Name="LiveConsoleHeaderText"
+                                   VerticalAlignment="Center"
+                                   FontSize="14"
+                                   FontWeight="SemiBold"
+                                   Text="Nhật ký Hoạt động Trực tiếp (Live Activity Console)" />
+
+                        <Border Grid.Column="1"
+                                Padding="8,4"
+                                VerticalAlignment="Center"
+                                Background="{StaticResource AccentSoftBrush}"
+                                CornerRadius="6">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <FontIcon Glyph="&#xE83D;" FontSize="13" Foreground="#60A5FA" VerticalAlignment="Center" />
+                                <TextBlock x:Name="BlockedRequestsBadge"
+                                           FontSize="12"
+                                           FontWeight="SemiBold"
+                                           Foreground="#60A5FA"
+                                           VerticalAlignment="Center"
+                                           Text="Đã chặn: 0 requests" />
+                            </StackPanel>
+                        </Border>
+
+                        <Border Grid.Column="2"
+                                Padding="8,4"
+                                VerticalAlignment="Center"
+                                Background="#1A3324"
+                                CornerRadius="6">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <FontIcon Glyph="&#xE714;" FontSize="13" Foreground="#34D399" VerticalAlignment="Center" />
+                                <TextBlock x:Name="YouTubeBypassBadge"
+                                           FontSize="12"
+                                           FontWeight="SemiBold"
+                                           Foreground="#34D399"
+                                           VerticalAlignment="Center"
+                                           Text="YouTube bypass: 0" />
+                            </StackPanel>
+                        </Border>
+
+                        <Button Grid.Column="3"
+                                Padding="8,4"
+                                FontSize="12"
+                                Click="ClearLogsButton_Click">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <FontIcon FontSize="12" Glyph="&#xE74D;" />
+                                <TextBlock x:Name="ClearLogsButtonText" Text="Xóa log" />
+                            </StackPanel>
+                        </Button>
+
+                        <Button Grid.Column="4"
+                                Padding="8,4"
+                                FontSize="12"
+                                Click="CopyLogsButton_Click">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <FontIcon FontSize="12" Glyph="&#xE8C8;" />
+                                <TextBlock x:Name="CopyLogsButtonText" Text="Sao chép" />
+                            </StackPanel>
+                        </Button>
+                    </Grid>
+
+                    <!-- Console Log TextBox / Viewer -->
+                    <Border Grid.Row="1"
+                            Padding="12"
+                            Background="{StaticResource ConsoleBackgroundBrush}"
+                            BorderBrush="{StaticResource CardBorderBrush}"
+                            BorderThickness="1"
+                            CornerRadius="8">
+                        <ScrollViewer x:Name="ConsoleScrollViewer" VerticalScrollBarVisibility="Auto">
+                            <TextBox x:Name="LiveConsoleTextBox"
+                                     AcceptsReturn="True"
+                                     Background="Transparent"
+                                     BorderThickness="0"
+                                     FontFamily="Cascadia Mono, Consolas, Courier New"
+                                     FontSize="12"
+                                     Foreground="#E2E8F0"
+                                     IsReadOnly="True"
+                                     IsTabStop="False"
+                                     TextWrapping="Wrap" />
+                        </ScrollViewer>
+                    </Border>
+                </Grid>
+            </Border>
+
+            <!-- 7. Technical Details Expander -->
+            <Expander x:Name="TechnicalDetailsExpander"
+                      Grid.Row="6"
+                      HorizontalAlignment="Stretch"
+                      IsExpanded="False">
+                <Expander.Header>
+                    <TextBlock x:Name="TechnicalDetailsHeaderText" Text="Thông tin kỹ thuật &amp; Phân tích PE" />
+                </Expander.Header>
+                <Border Margin="0,8,0,0"
+                        Padding="14"
+                        Background="{StaticResource ConsoleBackgroundBrush}"
+                        BorderBrush="{StaticResource CardBorderBrush}"
+                        BorderThickness="1"
+                        CornerRadius="8">
+                    <TextBox x:Name="DetailsTextBox"
+                             AcceptsReturn="True"
+                             Background="Transparent"
+                             BorderThickness="0"
+                             FontFamily="Cascadia Mono, Consolas, Courier New"
+                             FontSize="11"
+                             Foreground="#94A3B8"
+                             IsReadOnly="True"
+                             IsTabStop="False"
+                             TextWrapping="Wrap" />
+                </Border>
+            </Expander>
+        </Grid>
+    </ScrollViewer>
+</Page>
