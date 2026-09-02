@@ -47,13 +47,14 @@ internal static class Program
                         ? Path.Combine(root, "target", "release", "chrome_native_adblock.dll")
                         : Path.Combine(AppContext.BaseDirectory, "chrome_native_adblock.dll");
 
-                    var filterPath = File.Exists(Path.Combine(root, "filters", "combined_rules.txt"))
-                        ? Path.Combine(root, "filters", "combined_rules.txt")
-                        : File.Exists(Path.Combine(AppContext.BaseDirectory, "filters", "combined_rules.txt"))
-                            ? Path.Combine(AppContext.BaseDirectory, "filters", "combined_rules.txt")
-                            : File.Exists(Path.Combine(root, "filters", "smoke.txt"))
-                                ? Path.Combine(root, "filters", "smoke.txt")
-                                : Path.Combine(AppContext.BaseDirectory, "filters", "smoke.txt");
+                    var repositoryFiltersDir = Path.Combine(root, "filters");
+                    var filtersDir = Directory.Exists(repositoryFiltersDir)
+                        ? repositoryFiltersDir
+                        : Path.Combine(AppContext.BaseDirectory, "filters");
+                    // FilterManager creates this file after refreshing subscriptions.
+                    // Never pin a normal run to the tiny smoke-test ruleset merely
+                    // because combined_rules.txt does not exist yet.
+                    var filterPath = Path.Combine(filtersDir, "combined_rules.txt");
 
                     var extraArgs = filteredArgs.Length > 1 ? filteredArgs.Skip(1).ToArray() : null;
 

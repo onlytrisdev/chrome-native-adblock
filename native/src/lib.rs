@@ -15,7 +15,11 @@ pub const CNA_OK: i32 = 0;
 pub const CNA_BLOCK: i32 = 1;
 pub const CNA_ALLOW: i32 = 0;
 pub const CNA_ERROR: i32 = -1;
-const VERSION: &[u8] = b"chrome-native-adblock/1.0.0 adblock-rust/0.13.3\0";
+const VERSION: &str = concat!(
+    "chrome-native-adblock/",
+    env!("CARGO_PKG_VERSION"),
+    " adblock-rust/0.13.3\0"
+);
 
 static ENGINE: LazyLock<RwLock<Option<Engine>>> = LazyLock::new(|| RwLock::new(None));
 static LAST_ERROR: LazyLock<RwLock<String>> = LazyLock::new(|| RwLock::new(String::new()));

@@ -4,7 +4,7 @@ High-performance 100% RAM-only native ad filtering and Manifest V2 enabler for
 stock Google Chrome on Windows.
 
 Chrome Native Adblock injects a native adblock engine directly into Chrome's
-Network Service process in memory, dynamically scans PE structures, and provides
+Network Service process in memory, validates build-specific PE rules, and provides
 a modern Windows 11 WinUI 3 desktop dashboard.
 
 ## What it does
@@ -27,9 +27,10 @@ collected by this project.
 
 ## Compatibility
 
-The native network hook supports **Chrome 152.0.7977.65 x64** and compatible builds.
-Its function RVAs and `URLRequest`/`GURL` layouts are dynamically verified and
-cross-referenced with official symbols (`native/hook_rules/chrome-152.0.7977.65.json`).
+The native network hook supports **Chrome 152.0.7977.65 x64** and
+**Chrome 152.0.7977.76 x64**. Function RVAs, prologues, and `URLRequest`/`GURL`
+layouts are recorded per build under `native/hook_rules/` and verified before
+installation.
 
 Every other Chrome layout is rejected before a hook is installed. Do not copy
 RVAs or object offsets between Chrome builds.
@@ -41,12 +42,16 @@ initiator-dependent rules such as `$script`, `$image`, `$xhr`, or `$third-party`
 are not yet fully represented by the native hook.
 
 YouTube blocking is best-effort and can change when YouTube changes its player.
+Subscription scriptlets are deliberately not executed in YouTube's page context
+because response-pruning scriptlets can trigger its anti-adblock dialog; network
+rules, cosmetic filtering, visible skip controls, and bounded short-ad acceleration
+remain active.
 The batch smoke test reports `INCONCLUSIVE` when the player, playback progress,
 or seek evidence cannot be verified; it does not count those cases as passes.
 
 ## Download
 
-Download `ChromeNativeAdblock-v1.0.0-win-x64.zip` from
+Download `ChromeNativeAdblock-GUI-v1.0.1-win-x64.zip` from
 [Releases](https://github.com/onlytrisdev/chrome-native-adblock/releases), extract
 the archive, and run `ChromeNativeAdblock.Gui.exe`.
 

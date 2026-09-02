@@ -36,6 +36,7 @@ pub enum HookResolutionMode {
 }
 
 // Build-specific values extracted from Chrome's official PDB.
+#[derive(Clone, Copy)]
 struct HookRule {
     start_rva: usize,
     cancel_rva: usize,
@@ -53,6 +54,17 @@ const CHROME_152_0_7977_65: HookRule = HookRule {
     start_prefix: &[0x41, 0x56, 0x56, 0x57, 0x53, 0x48, 0x83, 0xEC, 0x58],
     cancel_prefix: &[0x56, 0x57, 0x48, 0x81, 0xEC, 0x98, 0x00, 0x00, 0x00],
 };
+
+const CHROME_152_0_7977_76: HookRule = HookRule {
+    start_rva: 0x099D910,
+    cancel_rva: 0x0A5AFD00,
+    url_chain_offset: 0x48,
+    gurl_size: 0x78,
+    start_prefix: &[0x41, 0x56, 0x56, 0x57, 0x53, 0x48, 0x83, 0xEC, 0x58],
+    cancel_prefix: &[0x56, 0x57, 0x48, 0x81, 0xEC, 0x98, 0x00, 0x00, 0x00],
+};
+
+const KNOWN_HOOK_RULES: &[HookRule] = &[CHROME_152_0_7977_65, CHROME_152_0_7977_76];
 
 // Masked wildcard signatures for net::URLRequest::Start and net::URLRequest::CancelWithError
 pub const SIG_URL_REQUEST_START: &str = "41 56 56 57 53 48 83 EC ? 48 89 CE 48 8B 05 ? ? ? ? 48 31 E0 48 89 44 24 ? \
@@ -746,7 +758,7 @@ unsafe extern "system" fn start_detour(request: *mut c_void) {
 }
 
 // ---------------------------------------------------------------------------
-// Dynamic Scanning & Installation Logic
+// Fail-closed build-specific installation logic
 // ---------------------------------------------------------------------------
 
 pub unsafe fn install() -> Result<(), InstallError> {
@@ -771,63 +783,42 @@ pub unsafe fn install() -> Result<(), InstallError> {
         .text_section()
         .ok_or_else(|| InstallError::new(3, "Failed to locate .text section in chrome.dll"))?;
 
-    // 1. Try known hardcoded RVAs first (fast path)
-    let fast_rule = &CHROME_152_0_7977_65;
-    let fast_start = unsafe { module.add(fast_rule.start_rva) };
-    let fast_cancel = unsafe { module.add(fast_rule.cancel_rva) };
+    let text_start = text_sec.virtual_address as usize;
+    let text_end = text_start + (text_sec.virtual_size as usize);
+    let rule = KNOWN_HOOK_RULES
+        .iter()
+        .find(|rule| {
+            if rule.start_rva < text_start
+                || rule.start_rva + rule.start_prefix.len() > text_end
+                || rule.cancel_rva < text_start
+                || rule.cancel_rva + rule.cancel_prefix.len() > text_end
+            {
+                return false;
+            }
 
-    let (start_rva, cancel_rva, resolution_mode) =
-        if unsafe { has_prefix(fast_start, fast_rule.start_prefix) }
-            && unsafe { has_prefix(fast_cancel, fast_rule.cancel_prefix) }
-        {
-            RESOLVED_URL_CHAIN_OFFSET.store(fast_rule.url_chain_offset, Ordering::Release);
-            RESOLVED_GURL_SIZE.store(fast_rule.gurl_size, Ordering::Release);
-            (
-                fast_rule.start_rva,
-                fast_rule.cancel_rva,
-                HookResolutionMode::KnownRva,
+            let start = unsafe { module.add(rule.start_rva) };
+            let cancel = unsafe { module.add(rule.cancel_rva) };
+            unsafe {
+                has_prefix(start, rule.start_prefix) && has_prefix(cancel, rule.cancel_prefix)
+            }
+        })
+        .ok_or_else(|| {
+            InstallError::new(
+                3,
+                "Unsupported chrome.dll build: no verified hook rule matched. Refusing dynamic installation",
             )
-        } else {
-            let text_ptr = unsafe { module.add(text_sec.virtual_address as usize) };
-            let text_slice =
-                unsafe { slice::from_raw_parts(text_ptr, text_sec.virtual_size as usize) };
+        })?;
 
-            let start_pattern = Pattern::parse(SIG_URL_REQUEST_START)
-                .map_err(|e| InstallError::new(3, format!("Invalid start pattern: {e}")))?;
-            let cancel_pattern = Pattern::parse(SIG_URL_REQUEST_CANCEL_WITH_ERROR)
-                .map_err(|e| InstallError::new(3, format!("Invalid cancel pattern: {e}")))?;
-
-            let start_offset = find_unique_pattern(text_slice, &start_pattern).map_err(|e| {
-                InstallError::new(3, format!("Dynamic scan failed for URLRequest::Start: {e}"))
-            })?;
-            let cancel_offset = find_cancel_with_error_pattern(text_slice, &cancel_pattern)
-                .map_err(|e| {
-                    InstallError::new(
-                        3,
-                        format!("Dynamic scan failed for URLRequest::CancelWithError: {e}"),
-                    )
-                })?;
-
-            let scanned_start_rva = (text_sec.virtual_address as usize) + start_offset;
-            let scanned_cancel_rva = (text_sec.virtual_address as usize) + cancel_offset;
-
-            RESOLVED_URL_CHAIN_OFFSET.store(0x48, Ordering::Release);
-            RESOLVED_GURL_SIZE.store(0x78, Ordering::Release);
-
-            (
-                scanned_start_rva,
-                scanned_cancel_rva,
-                HookResolutionMode::DynamicPatternScan,
-            )
-        };
+    RESOLVED_URL_CHAIN_OFFSET.store(rule.url_chain_offset, Ordering::Release);
+    RESOLVED_GURL_SIZE.store(rule.gurl_size, Ordering::Release);
+    let start_rva = rule.start_rva;
+    let cancel_rva = rule.cancel_rva;
+    let resolution_mode = HookResolutionMode::KnownRva;
 
     let start_ptr = unsafe { module.add(start_rva) };
     let cancel_ptr = unsafe { module.add(cancel_rva) };
 
     // 3. Verify instruction prologue safety
-    let text_start = text_sec.virtual_address as usize;
-    let text_end = text_start + (text_sec.virtual_size as usize);
-
     if start_rva < text_start
         || start_rva + 16 > text_end
         || cancel_rva < text_start

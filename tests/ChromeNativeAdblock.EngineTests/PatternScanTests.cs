@@ -105,8 +105,9 @@ public sealed class PatternScanTests
             using var engine = new NativeEngine(dllPath);
             var (startRva, cancelRva) = engine.ScanChromeDllFile(chromeDll);
 
-            Assert.Equal((nuint)0x08BE450, startRva);
-            Assert.Equal((nuint)0x0A5A09C0, cancelRva);
+            var is797776 = chromeDll.Contains("152.0.7977.76", StringComparison.OrdinalIgnoreCase);
+            Assert.Equal(is797776 ? (nuint)0x099D910 : (nuint)0x08BE450, startRva);
+            Assert.Equal(is797776 ? (nuint)0x0A5AFD00 : (nuint)0x0A5A09C0, cancelRva);
         }
     }
 
@@ -130,8 +131,16 @@ public sealed class PatternScanTests
             var result = PatternScanSmoke.Run(chromeExe, dllPath);
 
             Assert.True(result.Success);
-            Assert.Equal("0x8BE450", result.StartRva);
-            Assert.Equal("0xA5A09C0", result.CancelRva);
+            if (result.ChromeVersion == "152.0.7977.76")
+            {
+                Assert.Equal("0x99D910", result.StartRva);
+                Assert.Equal("0xA5AFD00", result.CancelRva);
+            }
+            else
+            {
+                Assert.Equal("0x8BE450", result.StartRva);
+                Assert.Equal("0xA5A09C0", result.CancelRva);
+            }
             Assert.Null(result.Error);
         }
     }
@@ -140,9 +149,10 @@ public sealed class PatternScanTests
     [Trait("Category", "Integration")]
     public void TestScanMultiVersionChromiumBuildsIfPresent()
     {
-        (string Path, nuint ExpectedStart, nuint ExpectedCancel)[] builds =
+            (string Path, nuint ExpectedStart, nuint ExpectedCancel)[] builds =
         [
             (@"C:\Program Files\Google\Chrome\Application\152.0.7977.65\chrome.dll", 0x08BE450, 0x0A5A09C0),
+            (@"C:\Program Files\Google\Chrome\Application\152.0.7977.76\chrome.dll", 0x099D910, 0x0A5AFD00),
             (@"C:\Program Files\CocCoc\Browser\Application\151.0.7922.176\browser.dll", 0x08BE1B0, 0x0AAF6950),
             (@"C:\Program Files\BraveSoftware\Brave-Browser\Application\152.1.94.117\chrome.dll", 0x0992CA0, 0x0B98EEC0),
             (Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), @"ms-playwright\chromium-1223\chrome-win64\chrome.dll"), 0x09BE170, 0x09D53BD0),

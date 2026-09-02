@@ -1,7 +1,7 @@
 param(
     [Parameter(Mandatory = $false)]
     [ValidatePattern('^v\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$')]
-    [string]$Version = 'v1.0.0'
+    [string]$Version = 'v1.0.1'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -20,10 +20,15 @@ New-Item -ItemType Directory -Path $releaseRoot | Out-Null
 Push-Location $projectRoot
 try {
     cargo fmt --all -- --check
+    if ($LASTEXITCODE -ne 0) { throw "cargo fmt failed with exit code $LASTEXITCODE" }
     cargo test --workspace --locked
+    if ($LASTEXITCODE -ne 0) { throw "cargo test failed with exit code $LASTEXITCODE" }
     cargo build --workspace --release --locked
+    if ($LASTEXITCODE -ne 0) { throw "cargo build failed with exit code $LASTEXITCODE" }
     dotnet restore .\ChromeNativeAdblock.slnx
+    if ($LASTEXITCODE -ne 0) { throw "dotnet restore failed with exit code $LASTEXITCODE" }
     dotnet test .\ChromeNativeAdblock.slnx -c Release --no-restore --filter 'Category!=Integration'
+    if ($LASTEXITCODE -ne 0) { throw "dotnet test failed with exit code $LASTEXITCODE" }
 
     $stageRoot = Join-Path $projectRoot "artifacts\stage\$Version"
     $stageRoot = [System.IO.Path]::GetFullPath($stageRoot)
@@ -38,7 +43,9 @@ try {
     $guiStage = Join-Path $stageRoot 'gui'
     $cliStage = Join-Path $stageRoot 'cli'
     dotnet publish .\gui\ChromeNativeAdblock.Gui\ChromeNativeAdblock.Gui.csproj -c Release -r win-x64 --self-contained true -o $guiStage
+    if ($LASTEXITCODE -ne 0) { throw "GUI publish failed with exit code $LASTEXITCODE" }
     dotnet publish .\launcher\ChromeNativeAdblock.Launcher\ChromeNativeAdblock.Launcher.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=false -o $cliStage
+    if ($LASTEXITCODE -ne 0) { throw "CLI publish failed with exit code $LASTEXITCODE" }
 
     foreach ($stage in @($guiStage, $cliStage)) {
         Copy-Item -LiteralPath .\target\release\chrome_native_adblock.dll -Destination $stage -Force

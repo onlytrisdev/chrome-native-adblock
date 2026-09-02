@@ -878,6 +878,14 @@ public class FilterManager
                         }
                         return;
                     }
+                    else if (model?.EnabledFilters != null &&
+                             model.EnabledFilters.Count == 0 &&
+                             model.CurrentPreset == BlockingPreset.Custom)
+                    {
+                        // An explicit empty Custom selection is valid user state.
+                        // Do not reinterpret it as a missing/corrupt settings file.
+                        return;
+                    }
                     else if (model?.CurrentPreset.HasValue == true && model.CurrentPreset.Value != BlockingPreset.Custom)
                     {
                         var presetIds = FilterCatalog.GetFilterIdsForPreset(model.CurrentPreset.Value);

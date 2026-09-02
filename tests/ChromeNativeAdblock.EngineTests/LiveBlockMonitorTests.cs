@@ -74,7 +74,7 @@ public sealed class LiveBlockMonitorTests
         Assert.Contains("[CNA-CSS-HIDE]", cssScript);
 
         var ytScript = CosmeticInjector.BuildYouTubeBypassScript();
-        Assert.Contains("[CNA-YT-SANITIZE]", ytScript);
+        Assert.DoesNotContain("[CNA-YT-SANITIZE]", ytScript);
         Assert.Contains("[CNA-YT-SKIP]", ytScript);
     }
 

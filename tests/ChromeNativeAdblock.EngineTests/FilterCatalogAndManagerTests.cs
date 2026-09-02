@@ -244,6 +244,37 @@ public sealed class FilterCatalogAndManagerTests
     }
 
     [Fact]
+    public void FilterManagerRestoresExplicitlyEmptyCustomSelection()
+    {
+        var tempDir = Path.Combine(Path.GetTempPath(), "CnaEmptyCustom_" + Guid.NewGuid().ToString("N"));
+        var filtersDir = Path.Combine(tempDir, "filters");
+        var settingsFile = Path.Combine(tempDir, "filter_settings.json");
+
+        try
+        {
+            Directory.CreateDirectory(filtersDir);
+            File.WriteAllText(settingsFile, """
+            {
+              "EnabledFilters": [],
+              "CurrentPreset": 4
+            }
+            """);
+
+            var manager = new FilterManager(filtersDir, settingsFile);
+
+            Assert.Empty(manager.EnabledFilterIds);
+            Assert.Equal(BlockingPreset.Custom, manager.GetCurrentPreset());
+        }
+        finally
+        {
+            if (Directory.Exists(tempDir))
+            {
+                try { Directory.Delete(tempDir, true); } catch { }
+            }
+        }
+    }
+
+    [Fact]
     public async Task FilterManagerMergesOnlyEnabledFilters()
     {
         var tempDir = Path.Combine(Path.GetTempPath(), "CnaTest_" + Guid.NewGuid().ToString("N"));

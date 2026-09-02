@@ -105,7 +105,7 @@ public static class FilterCatalog
         new("easylist", CategoryAds, null, "Filter_easylist_Name", "EasyList", "Filter_easylist_Desc", "Danh sách chặn quảng cáo phổ biến và toàn diện nhất thế giới", "https://easylist.to/easylist/easylist.txt", "easylist_basic.txt", true, 10),
         new("adguard-base", CategoryAds, null, "Filter_adguard_base_Name", "AdGuard – Ads", "Filter_adguard_base_Desc", "Bộ lọc quảng cáo toàn diện tiêu chuẩn từ AdGuard Team", "https://raw.githubusercontent.com/AdguardTeam/FiltersRegistry/master/filters/filter_2_Base/filter.txt", "adguard_base.txt", false, 11),
         new("adguard-mobile", CategoryAds, null, "Filter_adguard_mobile_Name", "AdGuard – Mobile Ads", "Filter_adguard_mobile_Desc", "Bộ lọc quảng cáo tối ưu cho giao diện di động và ứng dụng web", "https://raw.githubusercontent.com/AdguardTeam/FiltersRegistry/master/filters/filter_11_Mobile/filter.txt", "adguard_mobile.txt", false, 12),
-        new("youtube-adblock", CategoryAds, null, "Filter_youtube_adblock_Name", "YouTube Adblock & Scriptlets", "Filter_youtube_adblock_Desc", "Chặn quảng cáo, biểu ngữ tài trợ và video ads trên YouTube", "https://raw.githubusercontent.com/yokoffing/youtube-adblock/master/YouTube-Adblock.txt", "youtube_rules.txt", true, 13),
+        new("youtube-adblock", CategoryAds, null, "Filter_youtube_adblock_Name", "YouTube Adblock & Scriptlets", "Filter_youtube_adblock_Desc", "Chặn quảng cáo, biểu ngữ tài trợ và video ads trên YouTube", "https://raw.githubusercontent.com/onlytrisdev/chrome-native-adblock/main/filters/youtube_rules.txt", "youtube_rules.txt", true, 13),
 
         // =========================================================================
         // 3. Riêng tư / Privacy (CategoryPrivacy)

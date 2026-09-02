@@ -408,6 +408,146 @@ public sealed class CosmeticInjector : IDisposable
     {
         return """
 (function() {
+    const host = location && location.hostname ? location.hostname.toLowerCase() : '';
+    if (host !== 'youtube.com' && !host.endsWith('.youtube.com')) return;
+    if (window.__cnaYtSafeCleanupInstalled) return;
+    window.__cnaYtSafeCleanupInstalled = true;
+
+    // Keep this helper deliberately conservative. Do not proxy fetch/XHR/JSON,
+    // rewrite player responses, or seek the main content timeline. Those
+    // techniques are detectable and can leave YouTube's player stalled.
+    const cosmeticSelectors = [
+        '#masthead-ad',
+        '#player-ads',
+        'ytd-ad-slot-renderer',
+        'ytd-in-feed-ad-layout-renderer',
+        'ytd-display-ad-renderer',
+        'ytd-promoted-video-renderer',
+        'ytd-compact-promoted-video-renderer',
+        'ytd-action-companion-ad-renderer',
+        'ytd-banner-promo-renderer',
+        'ytd-statement-banner-renderer',
+        '.ytp-ad-overlay-container',
+        '.ytp-ad-image-overlay',
+        '.ytp-ad-overlay-image'
+    ];
+
+    const skipButtonSelectors = [
+        '.ytp-ad-skip-button',
+        '.ytp-skip-ad-button',
+        '.ytp-ad-skip-button-modern',
+        'button.ytp-ad-skip-button-modern',
+        '.ytp-ad-skip-button-slot button',
+        '.ytp-ad-overlay-close-button'
+    ];
+
+    function isVisible(element) {
+        if (!(element instanceof HTMLElement)) return false;
+        const style = getComputedStyle(element);
+        return style.display !== 'none' && style.visibility !== 'hidden' &&
+            element.getClientRects().length > 0;
+    }
+
+    let lastPlayerSkipAttempt = 0;
+    function requestPlayerSkip() {
+        const player = document.getElementById('movie_player');
+        if (!player || !player.classList.contains('ad-showing')) return false;
+        const now = Date.now();
+        if (now - lastPlayerSkipAttempt < 1000) return false;
+        lastPlayerSkipAttempt = now;
+
+        let skipped = false;
+        try {
+            if (typeof player.skipAd === 'function') {
+                player.skipAd();
+                skipped = true;
+            }
+        } catch (e) {}
+
+        // Some short unskippable pre-rolls ignore skipAd(). Advance only the
+        // active ad media element; never touch a normal/long content video.
+        const adVideo = player.querySelector('video');
+        if (adVideo && Number.isFinite(adVideo.duration) &&
+            adVideo.duration > 0 && adVideo.duration <= 120) {
+            try {
+                adVideo.currentTime = adVideo.duration;
+                adVideo.playbackRate = 16;
+                adVideo.dataset.cnaAdAccelerated = '1';
+                skipped = true;
+            } catch (e) {}
+        }
+        return skipped;
+    }
+
+    function cleanupYouTubeAds() {
+        const activePlayer = document.getElementById('movie_player');
+        if (activePlayer && !activePlayer.classList.contains('ad-showing')) {
+            const contentVideo = activePlayer.querySelector('video[data-cna-ad-accelerated="1"]');
+            if (contentVideo) {
+                try { contentVideo.playbackRate = 1; } catch (e) {}
+                try { delete contentVideo.dataset.cnaAdAccelerated; } catch (e) {}
+            }
+        }
+
+        for (const selector of cosmeticSelectors) {
+            for (const element of document.querySelectorAll(selector)) {
+                try { element.remove(); } catch (e) {}
+            }
+        }
+
+        let clicked = requestPlayerSkip();
+        for (const selector of skipButtonSelectors) {
+            for (const button of document.querySelectorAll(selector)) {
+                if (!isVisible(button)) continue;
+                try {
+                    button.click();
+                    clicked = true;
+                } catch (e) {}
+            }
+        }
+
+        if (clicked) {
+            try { console.info('[CNA-YT-SKIP] Clicked a visible YouTube skip control'); } catch (e) {}
+        }
+    }
+
+    let scheduled = false;
+    function scheduleCleanup() {
+        if (scheduled) return;
+        scheduled = true;
+        setTimeout(function() {
+            scheduled = false;
+            cleanupYouTubeAds();
+        }, 100);
+    }
+
+    const start = function() {
+        cleanupYouTubeAds();
+        const root = document.documentElement;
+        if (!root) return;
+        new MutationObserver(scheduleCleanup).observe(root, {
+            childList: true,
+            subtree: true,
+            attributes: true,
+            attributeFilter: ['class']
+        });
+    };
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', start, { once: true });
+    } else {
+        start();
+    }
+})();
+""";
+    }
+
+    // Kept temporarily for source-level comparison with the former v1.0.0
+    // implementation. It is never injected or called.
+    private static string BuildLegacyYouTubeBypassScript()
+    {
+        return """
+(function() {
     if (!location.hostname.includes('youtube.com')) return;
 
     // Recursive object sanitizer to strip ad placements and player ads
@@ -945,7 +1085,15 @@ public sealed class CosmeticInjector : IDisposable
             selectors,
             isVietnameseNews ? DefaultContainerCollapserSelectors : conservativeCollapsers);
         if (!string.IsNullOrWhiteSpace(css)) payload.AppendLine(css);
-        if (!string.IsNullOrWhiteSpace(resources.InjectedScript)) payload.AppendLine(resources.InjectedScript);
+        // uBO subscriptions currently include YouTube response-pruning scriptlets
+        // that replace JSON.parse globally. YouTube detects that mutation and can
+        // stall the player behind its anti-adblock dialog. Keep network and
+        // cosmetic filtering active, but do not execute subscription scriptlets
+        // in YouTube's page context.
+        if (!isYouTube && !string.IsNullOrWhiteSpace(resources.InjectedScript))
+        {
+            payload.AppendLine(resources.InjectedScript);
+        }
         if (isYouTube) payload.AppendLine(BuildYouTubeBypassScript());
         if (isVietnameseNews) payload.AppendLine(BuildSmartContainerCollapserScript());
 

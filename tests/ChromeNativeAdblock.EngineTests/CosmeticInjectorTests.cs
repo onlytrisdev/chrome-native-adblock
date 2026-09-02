@@ -6,33 +6,21 @@ namespace ChromeNativeAdblock.EngineTests;
 public sealed class CosmeticInjectorTests
 {
     [Fact]
-    public void TestYouTubeBypassScriptContainsModernSelectorsAndPlayerApi()
+    public void TestYouTubeBypassScriptUsesConservativeDomCleanupOnly()
     {
         var script = CosmeticInjector.BuildYouTubeBypassScript();
 
-        // Check internal player API calls
-        Assert.Contains("movie_player", script);
-        Assert.Contains("player.skipAd", script);
-        Assert.Contains("player.seekTo", script);
-        Assert.Contains("player.getDuration", script);
-
-        // Check modern overlay and interstitial selectors
+        // Keep cosmetic cleanup and a rate-limited player skip path.
         var expectedSelectors = new[]
         {
-            ".ytp-ad-action-interstitial",
-            ".ytp-ad-action-interstitial-background",
             ".ytp-ad-image-overlay",
             ".ytp-ad-overlay-image",
-            ".ytp-ad-player-overlay-layout",
-            ".ytp-ad-player-overlay-flyout-cta",
-            ".ytp-ad-player-overlay-instream-user-sentiment",
             "ytd-action-companion-ad-renderer",
-            ".ytp-ad-overlay-slot",
             ".ytp-ad-overlay-container",
-            ".video-ads.ytp-ad-module",
-            "div#action-companion-click-target",
-            ".ytp-suggested-action-badge",
-            ".ytp-ad-action-interstitial-action-button"
+            "ytd-ad-slot-renderer",
+            "#player-ads",
+            "#masthead-ad",
+            ".ytp-ad-skip-button-modern"
         };
 
         foreach (var selector in expectedSelectors)
@@ -44,6 +32,18 @@ public sealed class CosmeticInjectorTests
         Assert.Contains("MutationObserver", script);
         Assert.Contains("childList: true", script);
         Assert.Contains("subtree: true", script);
+        Assert.Contains("player.skipAd()", script);
+        Assert.Contains("lastPlayerSkipAttempt", script);
+
+        // Never rewrite YouTube data/player APIs or seek the main timeline.
+        Assert.DoesNotContain("window.fetch =", script);
+        Assert.DoesNotContain("JSON.parse =", script);
+        Assert.DoesNotContain("XMLHttpRequest.prototype", script);
+        Assert.DoesNotContain("ytInitialPlayerResponse", script);
+        Assert.DoesNotContain("player.seekTo", script);
+        Assert.Contains("adVideo.currentTime = adVideo.duration", script);
+        Assert.Contains("adVideo.playbackRate = 16", script);
+        Assert.DoesNotContain("setInterval", script);
     }
 
     [Fact]
@@ -68,11 +68,11 @@ public sealed class CosmeticInjectorTests
         using var engine = new NativeEngine(dllPath);
         var fullScript = CosmeticInjector.BuildFullInjectionScript(engine);
 
-        Assert.Contains(".ytp-ad-action-interstitial", fullScript);
+        Assert.Contains(".ytp-ad-image-overlay", fullScript);
         Assert.Contains("ytd-action-companion-ad-renderer", fullScript);
-        Assert.Contains(".ytp-ad-player-overlay-layout", fullScript);
-        Assert.Contains("player.skipAd", fullScript);
-        Assert.Contains("[CNA-YT-SANITIZE]", fullScript);
+        Assert.Contains(".ytp-ad-skip-button-modern", fullScript);
+        Assert.Contains("player.skipAd()", fullScript);
+        Assert.DoesNotContain("[CNA-YT-SANITIZE]", fullScript);
     }
 
     [Fact]
@@ -192,10 +192,12 @@ public sealed class CosmeticInjectorTests
         if (dllPath == null) return;
 
         using var engine = new NativeEngine(dllPath);
-        engine.LoadFilterText("youtube.com##.youtube-only\n24h.com.vn##.vn-only\nexample.org##.generic-ad\n");
+        engine.LoadFilterText("youtube.com##.youtube-only\nyoutube.com##+js(set-constant, cnaYoutubeMarker, true)\n24h.com.vn##.vn-only\nexample.org##.generic-ad\nexample.org##+js(set-constant, cnaGenericMarker, true)\n");
 
         var youtube = CosmeticInjector.BuildInjectionScriptForUrl(engine, "https://www.youtube.com/watch?v=test");
-        Assert.Contains("player.skipAd", youtube);
+        Assert.Contains("__cnaYtSafeCleanupInstalled", youtube);
+        Assert.Contains("player.skipAd()", youtube);
+        Assert.DoesNotContain("cnaYoutubeMarker", youtube);
         Assert.Contains(".youtube-only", youtube);
         Assert.DoesNotContain(".vn-only", youtube);
         Assert.DoesNotContain(".adv-24h-mid", youtube);
@@ -203,12 +205,13 @@ public sealed class CosmeticInjectorTests
         var vietnamese = CosmeticInjector.BuildInjectionScriptForUrl(engine, "https://www.24h.com.vn/news");
         Assert.Contains(".vn-only", vietnamese);
         Assert.Contains(".adv-24h-mid", vietnamese);
-        Assert.DoesNotContain("player.skipAd", vietnamese);
+        Assert.DoesNotContain("__cnaYtSafeCleanupInstalled", vietnamese);
         Assert.DoesNotContain(".youtube-only", vietnamese);
 
         var unrelated = CosmeticInjector.BuildInjectionScriptForUrl(engine, "https://example.org/");
         Assert.Contains(".generic-ad", unrelated);
-        Assert.DoesNotContain("player.skipAd", unrelated);
+        Assert.Contains("cnaGenericMarker", unrelated);
+        Assert.DoesNotContain("__cnaYtSafeCleanupInstalled", unrelated);
         Assert.DoesNotContain(".adv-24h-mid", unrelated);
     }
 

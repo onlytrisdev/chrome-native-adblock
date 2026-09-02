@@ -367,8 +367,11 @@ public static class BatchYouTubeSmoke
                 title = preRollState.Title.Replace(" - YouTube", "").Trim();
             }
 
-            preRollClean = !preRollState.IsAdShowing && preRollState.DetectedVisibleElements.Count == 0 &&
-                           preRollState.InitialAdPlacements == 0 && preRollState.PlayerAdPlacements == 0;
+            // Raw adPlacements metadata may remain in YouTube's player response even
+            // when its network request/rendering is blocked. Mutating that response
+            // is precisely what caused the anti-adblock regression, so only rendered
+            // ad state and the anti-adblock dialog are test failures here.
+            preRollClean = !preRollState.IsAdShowing && preRollState.DetectedVisibleElements.Count == 0;
 
             if (preRollState.DetectedVisibleElements.Count > 0)
             {
@@ -444,7 +447,7 @@ public static class BatchYouTubeSmoke
         }
 
         var distinctDetected = detectedSelectors.Distinct().ToList();
-        var adsObserved = distinctDetected.Count > 0 || initialPlacements > 0 || playerPlacements > 0 ||
+        var adsObserved = distinctDetected.Count > 0 ||
                           !preRollClean || !mid10Clean || !mid25Clean || !mid50Clean;
         var evidenceComplete = playerReady && duration > 0 && playbackProgressed && verifiedSeeks == seekAttempts;
         var success = evidenceComplete && !adsObserved;
@@ -453,7 +456,7 @@ public static class BatchYouTubeSmoke
         if (success)
         {
             Console.ForegroundColor = ConsoleColor.Green;
-            Console.WriteLine($"PASS (Duration: {Math.Round(duration)}s | Ads Detected: 0 | Placements: 0)");
+            Console.WriteLine($"PASS (Duration: {Math.Round(duration)}s | Visible Ads: 0 | Raw Placements: {initialPlacements}/{playerPlacements})");
             Console.ResetColor();
         }
         else if (verdict == "FAIL")
@@ -523,6 +526,10 @@ public static class BatchYouTubeSmoke
                 '.ytp-ad-survey'
             ];
             const detectedVisible = [];
+            const bodyText = document.body && document.body.innerText ? document.body.innerText : '';
+            if (bodyText.includes('Ad blockers are not allowed on YouTube')) {
+                detectedVisible.push('youtube-anti-adblock-dialog');
+            }
             for (let i = 0; i < adSelectors.length; i++) {
                 const sel = adSelectors[i];
                 const elements = document.querySelectorAll(sel);

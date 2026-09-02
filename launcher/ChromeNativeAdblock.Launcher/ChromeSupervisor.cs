@@ -43,11 +43,11 @@ public sealed class ChromeSupervisor : IDisposable
             ? Path.Combine(root, "target", "release", "chrome_native_adblock.dll")
             : Path.Combine(AppContext.BaseDirectory, "chrome_native_adblock.dll"));
 
-        _filterPath = _options.FilterPath ?? (File.Exists(Path.Combine(root, "filters", "combined_rules.txt"))
-            ? Path.Combine(root, "filters", "combined_rules.txt")
-            : File.Exists(Path.Combine(AppContext.BaseDirectory, "filters", "combined_rules.txt"))
-                ? Path.Combine(AppContext.BaseDirectory, "filters", "combined_rules.txt")
-                : Path.Combine(root, "filters", "smoke.txt"));
+        var repositoryFiltersDir = Path.Combine(root, "filters");
+        var defaultFiltersDir = Directory.Exists(repositoryFiltersDir)
+            ? repositoryFiltersDir
+            : Path.Combine(AppContext.BaseDirectory, "filters");
+        _filterPath = _options.FilterPath ?? Path.Combine(defaultFiltersDir, "combined_rules.txt");
 
         _cosmeticInjector = new CosmeticInjector();
 
