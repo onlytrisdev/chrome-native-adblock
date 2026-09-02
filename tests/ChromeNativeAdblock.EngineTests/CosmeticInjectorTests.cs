@@ -28,22 +28,18 @@ public sealed class CosmeticInjectorTests
             Assert.Contains(selector, script);
         }
 
-        // Check mutation observer
-        Assert.Contains("MutationObserver", script);
-        Assert.Contains("childList: true", script);
-        Assert.Contains("subtree: true", script);
+        // Check player skip & defuser
         Assert.Contains("player.skipAd()", script);
         Assert.Contains("lastPlayerSkipAttempt", script);
+        Assert.Contains("ytInitialPlayerResponse", script);
+        Assert.Contains("sanitizePlayerResponse", script);
 
-        // Never rewrite YouTube data/player APIs or seek the main timeline.
+        // Never monkey-patch global fetch or XMLHttpRequest or seek the main timeline.
         Assert.DoesNotContain("window.fetch =", script);
-        Assert.DoesNotContain("JSON.parse =", script);
         Assert.DoesNotContain("XMLHttpRequest.prototype", script);
-        Assert.DoesNotContain("ytInitialPlayerResponse", script);
         Assert.DoesNotContain("player.seekTo", script);
-        Assert.Contains("adVideo.currentTime = adVideo.duration", script);
-        Assert.Contains("adVideo.playbackRate = 16", script);
-        Assert.DoesNotContain("setInterval", script);
+        Assert.Contains("Response.prototype.json", script);
+        Assert.Contains("JSON.parse", script);
     }
 
     [Fact]

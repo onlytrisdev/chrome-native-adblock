@@ -5,9 +5,6 @@
 ||youtube.com/pagead/
 ||youtube.com/ptracking^
 ||youtube.com/api/stats/qoe?*adformat=
-||googlevideo.com/videoplayback?*adformat=
-||googlevideo.com/videoplayback?*ad_type=
-||googlevideo.com/videoplayback?*ctier=A
 youtube.com##.ytd-ad-slot-renderer
 youtube.com##ytd-in-feed-ad-layout-renderer
 youtube.com##.ytp-ad-module

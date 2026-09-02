@@ -364,22 +364,11 @@ pub fn normalize_request_type(raw: &str) -> &str {
 
 pub fn is_ad_stream_or_tracker(url: &str) -> bool {
     let lower = url.to_ascii_lowercase();
-    if lower.contains("googleads.g.doubleclick.net")
+    lower.contains("googleads.g.doubleclick.net")
         || lower.contains("pagead2.googlesyndication.com")
         || lower.contains("youtube.com/api/stats/ads")
         || lower.contains("youtube.com/pagead/")
         || lower.contains("youtube.com/ptracking")
-    {
-        return true;
-    }
-
-    if lower.contains("googlevideo.com/videoplayback")
-        && (lower.contains("adformat=") || lower.contains("ad_type=") || lower.contains("ctier=a"))
-    {
-        return true;
-    }
-
-    false
 }
 
 pub fn check_request(
@@ -985,20 +974,8 @@ mod tests {
             .expect("check")
         );
 
-        // Video ad streams
-        assert!(check_request("https://rr1---sn-abc.googlevideo.com/videoplayback?expire=123&adformat=1_8&sparams=adformat", "https://www.youtube.com/", "media", "GET").expect("check"));
-        assert!(check_request("https://rr2---sn-xyz.googlevideo.com/videoplayback?expire=123&ad_type=instream_overlay", "https://www.youtube.com/", "media", "GET").expect("check"));
-        assert!(
-            check_request(
-                "https://rr3---sn-xyz.googlevideo.com/videoplayback?expire=123&ctier=A",
-                "https://www.youtube.com/",
-                "media",
-                "GET"
-            )
-            .expect("check")
-        );
-
-        // Normal video playback stream (should not be blocked by ad stream detector)
+        // Video stream requests should never be blocked at network level
+        assert!(!check_request("https://rr1---sn-abc.googlevideo.com/videoplayback?expire=123&adformat=1_8&sparams=adformat", "https://www.youtube.com/", "media", "GET").expect("check"));
         assert!(!check_request("https://rr1---sn-abc.googlevideo.com/videoplayback?expire=123&id=regular_video&itag=18", "https://www.youtube.com/", "media", "GET").expect("check"));
     }
 

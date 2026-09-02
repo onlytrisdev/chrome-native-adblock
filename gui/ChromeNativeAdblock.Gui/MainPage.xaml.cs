@@ -35,18 +35,6 @@ public sealed partial class MainPage : Page
     private static readonly SolidColorBrush FilterItemHoverBrush = new(Windows.UI.Color.FromArgb(255, 0x26, 0x2A, 0x36));
     private static readonly SolidColorBrush FilterItemNormalBrush = new(Windows.UI.Color.FromArgb(255, 0x1A, 0x1D, 0x24));
 
-    // Preset UI Brushes
-    private static readonly SolidColorBrush PresetActiveBgBrush = new(Windows.UI.Color.FromArgb(255, 0x25, 0x63, 0xEB));
-    private static readonly SolidColorBrush PresetActiveBorderBrush = new(Windows.UI.Color.FromArgb(255, 0x60, 0xA5, 0xFA));
-    private static readonly SolidColorBrush PresetActiveTextBrush = new(Windows.UI.Color.FromArgb(255, 0xFF, 0xFF, 0xFF));
-    private static readonly SolidColorBrush PresetActiveSubTextBrush = new(Windows.UI.Color.FromArgb(255, 0xBF, 0xDB, 0xFE));
-
-    private static readonly SolidColorBrush PresetNormalBgBrush = new(Windows.UI.Color.FromArgb(255, 0x1A, 0x1D, 0x24));
-    private static readonly SolidColorBrush PresetNormalBorderBrush = new(Windows.UI.Color.FromArgb(255, 0x2E, 0x34, 0x40));
-    private static readonly SolidColorBrush PresetNormalTextBrush = new(Windows.UI.Color.FromArgb(255, 0xE2, 0xE8, 0xF0));
-    private static readonly SolidColorBrush PresetNormalIconBrush = new(Windows.UI.Color.FromArgb(255, 0x94, 0xA3, 0xB8));
-    private static readonly SolidColorBrush PresetNormalSubTextBrush = new(Windows.UI.Color.FromArgb(255, 0x64, 0x74, 0x8B));
-    private static readonly SolidColorBrush PresetHoverBgBrush = new(Windows.UI.Color.FromArgb(255, 0x26, 0x2A, 0x36));
     private static bool IsDescendantOf(DependencyObject? child, DependencyObject? parent)
     {
         if (child == null || parent == null) return false;
@@ -172,7 +160,6 @@ public sealed partial class MainPage : Page
             FilterManagementExpander.Expanding -= FilterManagementExpander_Expanding;
             FilterManagementExpander.Expanding += FilterManagementExpander_Expanding;
         }
-        SetupPresetPills();
 
         foreach (var category in FilterCatalog.Categories.OrderBy(c => c.DisplayOrder))
         {
@@ -583,7 +570,6 @@ public sealed partial class MainPage : Page
                 var (totalEnabled, totalCount, totalRules) = _filterManager.GetOverallCounts();
                 TotalFiltersActiveBadge.Text = T("TotalFiltersActiveFormat", totalEnabled, totalCount, totalRules);
             }
-            UpdatePresetSelectorUi();
         }
         finally
         {
@@ -613,122 +599,6 @@ public sealed partial class MainPage : Page
             {
                 countBorder.Background = new SolidColorBrush(Windows.UI.Color.FromArgb(255, 45, 48, 56));
             }
-        }
-    }
-
-    private void SetupPresetPills()
-    {
-        SetupPillHover(PresetPill_Basic, BlockingPreset.Basic);
-        SetupPillHover(PresetPill_Standard, BlockingPreset.Standard);
-        SetupPillHover(PresetPill_Advanced, BlockingPreset.Advanced);
-        SetupPillHover(PresetPill_Max, BlockingPreset.Max);
-        SetupPillHover(PresetPill_Custom, BlockingPreset.Custom);
-    }
-
-    private void SetupPillHover(Border? pill, BlockingPreset preset)
-    {
-        if (pill == null) return;
-        pill.SetHandCursor();
-        pill.PointerEntered += (s, e) =>
-        {
-            if (_filterManager.GetCurrentPreset() != preset)
-            {
-                pill.Background = PresetHoverBgBrush;
-            }
-        };
-        pill.PointerExited += (s, e) =>
-        {
-            if (_filterManager.GetCurrentPreset() != preset)
-            {
-                pill.Background = PresetNormalBgBrush;
-            }
-        };
-    }
-
-    private void PresetPill_Basic_Tapped(object sender, TappedRoutedEventArgs e) => SelectPreset(BlockingPreset.Basic);
-    private void PresetPill_Standard_Tapped(object sender, TappedRoutedEventArgs e) => SelectPreset(BlockingPreset.Standard);
-    private void PresetPill_Advanced_Tapped(object sender, TappedRoutedEventArgs e) => SelectPreset(BlockingPreset.Advanced);
-    private void PresetPill_Max_Tapped(object sender, TappedRoutedEventArgs e) => SelectPreset(BlockingPreset.Max);
-    private void PresetPill_Custom_Tapped(object sender, TappedRoutedEventArgs e) => UpdatePresetSelectorUi();
-
-    private void SelectPreset(BlockingPreset preset)
-    {
-        if (_filterManager.GetCurrentPreset() == preset) return;
-
-        // 0ms instant UI update of all checkboxes and counter badges
-        _filterManager.ApplyPresetFast(preset);
-        RefreshFilterListUi();
-
-        var (enabled, total, rules) = _filterManager.GetOverallCounts();
-        var presetName = T($"Preset_{preset}");
-        AppendLog(T("PresetSwitchedLog", presetName, enabled));
-
-        // Background download and merge
-        _ = Task.Run(async () =>
-        {
-            try
-            {
-                await _filterManager.ApplyPresetAsync(preset);
-                DispatcherQueue.TryEnqueue(() =>
-                {
-                    RefreshFilterListUi();
-                });
-            }
-            catch (Exception ex)
-            {
-                DispatcherQueue.TryEnqueue(() =>
-                {
-                    AppendLog($"[FilterManager] Preset error: {ex.Message}");
-                });
-            }
-        });
-    }
-
-    private void UpdatePresetSelectorUi()
-    {
-        if (PresetSelectorHeaderText != null) PresetSelectorHeaderText.Text = T("PresetSelectorHeader");
-        if (PresetText_Basic != null) PresetText_Basic.Text = T("Preset_Basic");
-        if (PresetSub_Basic != null) PresetSub_Basic.Text = T("Preset_Basic_Sub");
-        if (PresetText_Standard != null) PresetText_Standard.Text = T("Preset_Standard");
-        if (PresetSub_Standard != null) PresetSub_Standard.Text = T("Preset_Standard_Sub");
-        if (PresetText_Advanced != null) PresetText_Advanced.Text = T("Preset_Advanced");
-        if (PresetSub_Advanced != null) PresetSub_Advanced.Text = T("Preset_Advanced_Sub");
-        if (PresetText_Max != null) PresetText_Max.Text = T("Preset_Max");
-        if (PresetSub_Max != null) PresetSub_Max.Text = T("Preset_Max_Sub");
-        if (PresetText_Custom != null) PresetText_Custom.Text = T("Preset_Custom");
-        if (PresetSub_Custom != null) PresetSub_Custom.Text = T("Preset_Custom_Sub");
-
-        var currentPreset = _filterManager.GetCurrentPreset();
-        if (PresetActiveDescriptionText != null)
-        {
-            PresetActiveDescriptionText.Text = T($"Preset_{currentPreset}_Desc");
-        }
-
-        StylePresetPill(PresetPill_Basic, PresetIcon_Basic, PresetText_Basic, PresetSub_Basic, currentPreset == BlockingPreset.Basic);
-        StylePresetPill(PresetPill_Standard, PresetIcon_Standard, PresetText_Standard, PresetSub_Standard, currentPreset == BlockingPreset.Standard);
-        StylePresetPill(PresetPill_Advanced, PresetIcon_Advanced, PresetText_Advanced, PresetSub_Advanced, currentPreset == BlockingPreset.Advanced);
-        StylePresetPill(PresetPill_Max, PresetIcon_Max, PresetText_Max, PresetSub_Max, currentPreset == BlockingPreset.Max);
-        StylePresetPill(PresetPill_Custom, PresetIcon_Custom, PresetText_Custom, PresetSub_Custom, currentPreset == BlockingPreset.Custom);
-    }
-
-    private static void StylePresetPill(Border? pill, FontIcon? icon, TextBlock? text, TextBlock? subText, bool isActive)
-    {
-        if (pill == null) return;
-        if (isActive)
-        {
-            pill.Background = PresetActiveBgBrush;
-            pill.BorderBrush = PresetActiveBorderBrush;
-            if (text != null) text.Foreground = PresetActiveTextBrush;
-            if (icon != null) icon.Foreground = PresetActiveTextBrush;
-            if (subText != null) subText.Foreground = PresetActiveSubTextBrush;
-        }
-        else
-        {
-            pill.Background = PresetNormalBgBrush;
-            pill.BorderBrush = PresetNormalBorderBrush;
-            if (text != null) text.Foreground = PresetNormalTextBrush;
-            if (icon != null) icon.Foreground = PresetNormalIconBrush;
-            if (subText != null) subText.Foreground = PresetNormalSubTextBrush;
         }
     }
 
@@ -1163,11 +1033,6 @@ public sealed partial class MainPage : Page
         FilterCatalog.CategoryBuiltin => new SolidColorBrush(Windows.UI.Color.FromArgb(255, 45, 34, 84)),
         FilterCatalog.CategoryAds => new SolidColorBrush(Windows.UI.Color.FromArgb(255, 30, 58, 95)),
         FilterCatalog.CategoryPrivacy => new SolidColorBrush(Windows.UI.Color.FromArgb(255, 26, 51, 36)),
-        FilterCatalog.CategorySecurity => new SolidColorBrush(Windows.UI.Color.FromArgb(255, 60, 24, 24)),
-        FilterCatalog.CategoryMultipurpose => new SolidColorBrush(Windows.UI.Color.FromArgb(255, 37, 32, 72)),
-        FilterCatalog.CategoryCookies => new SolidColorBrush(Windows.UI.Color.FromArgb(255, 59, 42, 16)),
-        FilterCatalog.CategorySocial => new SolidColorBrush(Windows.UI.Color.FromArgb(255, 19, 56, 59)),
-        FilterCatalog.CategoryAnnoyances => new SolidColorBrush(Windows.UI.Color.FromArgb(255, 61, 35, 20)),
         FilterCatalog.CategoryRegions => new SolidColorBrush(Windows.UI.Color.FromArgb(255, 20, 50, 72)),
         _ => new SolidColorBrush(Windows.UI.Color.FromArgb(255, 30, 34, 42))
     };
@@ -1177,11 +1042,6 @@ public sealed partial class MainPage : Page
         FilterCatalog.CategoryBuiltin => new SolidColorBrush(Windows.UI.Color.FromArgb(255, 167, 139, 250)),
         FilterCatalog.CategoryAds => new SolidColorBrush(Windows.UI.Color.FromArgb(255, 96, 165, 250)),
         FilterCatalog.CategoryPrivacy => new SolidColorBrush(Windows.UI.Color.FromArgb(255, 52, 211, 153)),
-        FilterCatalog.CategorySecurity => new SolidColorBrush(Windows.UI.Color.FromArgb(255, 248, 113, 113)),
-        FilterCatalog.CategoryMultipurpose => new SolidColorBrush(Windows.UI.Color.FromArgb(255, 129, 140, 248)),
-        FilterCatalog.CategoryCookies => new SolidColorBrush(Windows.UI.Color.FromArgb(255, 245, 158, 11)),
-        FilterCatalog.CategorySocial => new SolidColorBrush(Windows.UI.Color.FromArgb(255, 45, 212, 191)),
-        FilterCatalog.CategoryAnnoyances => new SolidColorBrush(Windows.UI.Color.FromArgb(255, 251, 146, 60)),
         FilterCatalog.CategoryRegions => new SolidColorBrush(Windows.UI.Color.FromArgb(255, 56, 189, 248)),
         _ => new SolidColorBrush(Windows.UI.Color.FromArgb(255, 226, 232, 240))
     };

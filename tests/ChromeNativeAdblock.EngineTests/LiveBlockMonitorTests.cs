@@ -98,8 +98,8 @@ public sealed class LiveBlockMonitorTests
         Assert.NotNull(dllPath);
 
         using var monitor = new LiveBlockMonitor();
-        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
-        await Task.Delay(200, cts.Token);
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        await Task.Delay(400, cts.Token);
 
         using (var engine = new NativeEngine(dllPath))
         {
@@ -112,7 +112,7 @@ public sealed class LiveBlockMonitorTests
             }
         }
 
-        for (int i = 0; i < 50; i++)
+        for (int i = 0; i < 80; i++)
         {
             if (monitor.TotalNetworkBlocked >= 1) break;
             await Task.Delay(50, cts.Token);

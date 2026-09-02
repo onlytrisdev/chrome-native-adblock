@@ -410,27 +410,116 @@ public sealed class CosmeticInjector : IDisposable
 (function() {
     const host = location && location.hostname ? location.hostname.toLowerCase() : '';
     if (host !== 'youtube.com' && !host.endsWith('.youtube.com')) return;
-    if (window.__cnaYtSafeCleanupInstalled) return;
+    if (window.__cnaYtDefuserInstalled || window.__cnaYtSafeCleanupInstalled) return;
+    window.__cnaYtDefuserInstalled = true;
     window.__cnaYtSafeCleanupInstalled = true;
 
-    // Keep this helper deliberately conservative. Do not proxy fetch/XHR/JSON,
-    // rewrite player responses, or seek the main content timeline. Those
-    // techniques are detectable and can leave YouTube's player stalled.
-    const cosmeticSelectors = [
-        '#masthead-ad',
-        '#player-ads',
-        'ytd-ad-slot-renderer',
-        'ytd-in-feed-ad-layout-renderer',
-        'ytd-display-ad-renderer',
-        'ytd-promoted-video-renderer',
-        'ytd-compact-promoted-video-renderer',
-        'ytd-action-companion-ad-renderer',
-        'ytd-banner-promo-renderer',
-        'ytd-statement-banner-renderer',
-        '.ytp-ad-overlay-container',
-        '.ytp-ad-image-overlay',
-        '.ytp-ad-overlay-image'
-    ];
+    // 1. Defuser / Property Trapper (uBlock Origin pattern)
+    // Strips ad placements from YouTube player responses before player initialization
+    function sanitizePlayerResponse(obj) {
+        if (!obj || typeof obj !== 'object') return obj;
+        try {
+            if (obj.adPlacements) delete obj.adPlacements;
+            if (obj.playerAds) delete obj.playerAds;
+            if (obj.adSlots) delete obj.adSlots;
+            if (obj.adBreakHeartbeatParams) delete obj.adBreakHeartbeatParams;
+            if (obj.adBreakService) delete obj.adBreakService;
+            if (obj.playbackTracking) {
+                delete obj.playbackTracking.videostatsPlaybackUrl;
+                delete obj.playbackTracking.videostatsDelayplayUrl;
+                delete obj.playbackTracking.videostatsWatchtimeUrl;
+                delete obj.playbackTracking.ptrackingUrl;
+                delete obj.playbackTracking.qoeUrl;
+                delete obj.playbackTracking.atrUrl;
+            }
+        } catch (e) {}
+        return obj;
+    }
+
+    let _playerResponse = window.ytInitialPlayerResponse;
+    Object.defineProperty(window, 'ytInitialPlayerResponse', {
+        get: function() { return _playerResponse; },
+        set: function(val) {
+            _playerResponse = sanitizePlayerResponse(val);
+        },
+        configurable: true,
+        enumerable: true
+    });
+
+    let _ytplayer = window.ytplayer;
+    Object.defineProperty(window, 'ytplayer', {
+        get: function() { return _ytplayer; },
+        set: function(val) {
+            if (val && val.config && val.config.args) {
+                try {
+                    if (val.config.args.raw_player_response) {
+                        val.config.args.raw_player_response = sanitizePlayerResponse(val.config.args.raw_player_response);
+                    }
+                } catch (e) {}
+            }
+            _ytplayer = val;
+        },
+        configurable: true,
+        enumerable: true
+    });
+
+    // 2. Intercept Response.prototype.json (SPA playlist & AJAX fetch)
+    const origJson = Response.prototype.json;
+    Response.prototype.json = async function() {
+        const data = await origJson.apply(this, arguments);
+        if (data && typeof data === 'object') {
+            if (data.adPlacements || data.playerAds || data.adSlots) {
+                sanitizePlayerResponse(data);
+            }
+        }
+        return data;
+    };
+
+    // 3. Intercept JSON.parse with stealth native signature
+    const origParse = JSON.parse;
+    function safeParse(text, reviver) {
+        const res = origParse(text, reviver);
+        if (res && typeof res === 'object') {
+            if (res.adPlacements || res.playerAds || res.adSlots) {
+                sanitizePlayerResponse(res);
+            }
+        }
+        return res;
+    }
+    safeParse.toString = function() { return "function parse() { [native code] }"; };
+    try {
+        Object.defineProperty(safeParse, 'name', { value: 'parse' });
+        JSON.parse = safeParse;
+    } catch(e) {}
+
+    // 4. Anti-Adblock & Ad Cosmetic Suppression Stylesheet
+    const css = `
+        #masthead-ad, #player-ads, ytd-ad-slot-renderer, ytd-in-feed-ad-layout-renderer,
+        ytd-action-companion-ad-renderer, ytd-banner-promo-renderer, ytd-statement-banner-renderer,
+        ytd-promoted-video-renderer, ytd-compact-promoted-video-renderer, ytd-display-ad-renderer,
+        .ytp-ad-module, .ytp-ad-overlay-container, .ytp-ad-image-overlay, .ytp-ad-overlay-image,
+        .ytp-ad-progress-list, .ytp-ad-text, .ytp-ad-preview-container,
+        .ytp-ad-player-overlay, .ytp-ad-player-overlay-flyout-cta, .ytp-ad-survey,
+        ytd-enforcement-message-view-model, tp-yt-paper-dialog:has(#feedback.ytd-enforcement-message-view-model),
+        #enforcement-message-view-model, tp-yt-paper-dialog:has(ytd-enforcement-message-view-model),
+        .yt-playability-error-supported-renderers {
+            display: none !important;
+        }
+        tp-yt-iron-overlay-backdrop { display: none !important; }
+        body { overflow: auto !important; }
+    `;
+    const style = document.createElement('style');
+    style.id = 'cna-yt-cleanup-css';
+    style.textContent = css;
+    if (document.head) {
+        document.head.appendChild(style);
+    } else {
+        document.addEventListener('DOMContentLoaded', () => {
+            if (document.head && !document.getElementById('cna-yt-cleanup-css')) {
+                document.head.appendChild(style);
+            }
+        });
+    }
 
     const skipButtonSelectors = [
         '.ytp-ad-skip-button',
@@ -441,103 +530,63 @@ public sealed class CosmeticInjector : IDisposable
         '.ytp-ad-overlay-close-button'
     ];
 
-    function isVisible(element) {
-        if (!(element instanceof HTMLElement)) return false;
-        const style = getComputedStyle(element);
-        return style.display !== 'none' && style.visibility !== 'hidden' &&
-            element.getClientRects().length > 0;
-    }
-
+    // 5. Fallback Dynamic Cleanup & Modal Dismissal Loop
     let lastPlayerSkipAttempt = 0;
-    function requestPlayerSkip() {
-        const player = document.getElementById('movie_player');
-        if (!player || !player.classList.contains('ad-showing')) return false;
-        const now = Date.now();
-        if (now - lastPlayerSkipAttempt < 1000) return false;
-        lastPlayerSkipAttempt = now;
+    function handlePlayerCleanup() {
+        // Dismiss anti-adblock dialog backdrop & resume playback if paused by enforcement
+        const dialog = document.querySelector('tp-yt-paper-dialog:has(ytd-enforcement-message-view-model), ytd-enforcement-message-view-model');
+        if (dialog) {
+            try { dialog.remove(); } catch (e) {}
+            const backdrop = document.querySelector('tp-yt-iron-overlay-backdrop');
+            if (backdrop) {
+                try { backdrop.remove(); } catch (e) {}
+            }
+            const video = document.querySelector('video');
+            if (video && video.paused) {
+                try { video.play(); } catch (e) {}
+            }
+        }
 
         let skipped = false;
-        try {
-            if (typeof player.skipAd === 'function') {
-                player.skipAd();
-                skipped = true;
-            }
-        } catch (e) {}
-
-        // Some short unskippable pre-rolls ignore skipAd(). Advance only the
-        // active ad media element; never touch a normal/long content video.
-        const adVideo = player.querySelector('video');
-        if (adVideo && Number.isFinite(adVideo.duration) &&
-            adVideo.duration > 0 && adVideo.duration <= 120) {
-            try {
-                adVideo.currentTime = adVideo.duration;
-                adVideo.playbackRate = 16;
-                adVideo.dataset.cnaAdAccelerated = '1';
-                skipped = true;
-            } catch (e) {}
-        }
-        return skipped;
-    }
-
-    function cleanupYouTubeAds() {
-        const activePlayer = document.getElementById('movie_player');
-        if (activePlayer && !activePlayer.classList.contains('ad-showing')) {
-            const contentVideo = activePlayer.querySelector('video[data-cna-ad-accelerated="1"]');
-            if (contentVideo) {
-                try { contentVideo.playbackRate = 1; } catch (e) {}
-                try { delete contentVideo.dataset.cnaAdAccelerated; } catch (e) {}
-            }
-        }
-
-        for (const selector of cosmeticSelectors) {
-            for (const element of document.querySelectorAll(selector)) {
-                try { element.remove(); } catch (e) {}
-            }
-        }
-
-        let clicked = requestPlayerSkip();
+        // Fast-click skip buttons if any fallback ad appears
         for (const selector of skipButtonSelectors) {
             for (const button of document.querySelectorAll(selector)) {
-                if (!isVisible(button)) continue;
                 try {
                     button.click();
-                    clicked = true;
+                    skipped = true;
                 } catch (e) {}
             }
         }
 
-        if (clicked) {
+        const player = document.getElementById('movie_player');
+        if (player && (player.classList.contains('ad-showing') || player.classList.contains('ad-interrupting'))) {
+            const now = Date.now();
+            if (now - lastPlayerSkipAttempt >= 200) {
+                lastPlayerSkipAttempt = now;
+                try {
+                    if (typeof player.skipAd === 'function') {
+                        player.skipAd();
+                        skipped = true;
+                    }
+                } catch (e) {}
+
+                const video = player.querySelector('video');
+                if (video && !isNaN(video.duration) && video.duration > 0 && video.duration < 120) {
+                    try {
+                        video.muted = true;
+                        video.currentTime = video.duration;
+                        skipped = true;
+                    } catch(e) {}
+                }
+            }
+        }
+
+        if (skipped) {
             try { console.info('[CNA-YT-SKIP] Clicked a visible YouTube skip control'); } catch (e) {}
         }
     }
 
-    let scheduled = false;
-    function scheduleCleanup() {
-        if (scheduled) return;
-        scheduled = true;
-        setTimeout(function() {
-            scheduled = false;
-            cleanupYouTubeAds();
-        }, 100);
-    }
-
-    const start = function() {
-        cleanupYouTubeAds();
-        const root = document.documentElement;
-        if (!root) return;
-        new MutationObserver(scheduleCleanup).observe(root, {
-            childList: true,
-            subtree: true,
-            attributes: true,
-            attributeFilter: ['class']
-        });
-    };
-
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', start, { once: true });
-    } else {
-        start();
-    }
+    setInterval(handlePlayerCleanup, 100);
 })();
 """;
     }
