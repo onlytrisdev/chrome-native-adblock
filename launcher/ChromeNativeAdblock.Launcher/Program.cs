@@ -188,6 +188,15 @@ internal static class Program
                     Console.WriteLine(JsonSerializer.Serialize(result, JsonOptions));
                     return result.Success ? 0 : 1;
                 }
+                case "web-smoke":
+                case "realweb-smoke":
+                case "real-smoke":
+                {
+                    var paths = ResolvePaths(args);
+                    var chromePath = args.Length >= 4 ? Path.GetFullPath(args[3]) : ChromeInstallation.FindStableChrome();
+                    var result = await RealWebSmoke.RunAsync(chromePath, paths.DllPath, paths.FilterPath);
+                    return result.Success ? 0 : 1;
+                }
                 case "update-filters":
                 {
                     var root = FindRepositoryRoot();

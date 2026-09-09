@@ -105,9 +105,10 @@ public sealed class PatternScanTests
             using var engine = new NativeEngine(dllPath);
             var (startRva, cancelRva) = engine.ScanChromeDllFile(chromeDll);
 
+            var is801037 = chromeDll.Contains("153.0.8010.37", StringComparison.OrdinalIgnoreCase);
             var is797776 = chromeDll.Contains("152.0.7977.76", StringComparison.OrdinalIgnoreCase);
-            Assert.Equal(is797776 ? (nuint)0x099D910 : (nuint)0x08BE450, startRva);
-            Assert.Equal(is797776 ? (nuint)0x0A5AFD00 : (nuint)0x0A5A09C0, cancelRva);
+            Assert.Equal(is801037 ? (nuint)0x09256B0 : is797776 ? (nuint)0x099D910 : (nuint)0x08BE450, startRva);
+            Assert.Equal(is801037 ? (nuint)0x0A85B640 : is797776 ? (nuint)0x0A5AFD00 : (nuint)0x0A5A09C0, cancelRva);
         }
     }
 
@@ -131,7 +132,12 @@ public sealed class PatternScanTests
             var result = PatternScanSmoke.Run(chromeExe, dllPath);
 
             Assert.True(result.Success);
-            if (result.ChromeVersion == "152.0.7977.76")
+            if (result.ChromeVersion == "153.0.8010.37")
+            {
+                Assert.Equal("0x9256B0", result.StartRva);
+                Assert.Equal("0xA85B640", result.CancelRva);
+            }
+            else if (result.ChromeVersion == "152.0.7977.76")
             {
                 Assert.Equal("0x99D910", result.StartRva);
                 Assert.Equal("0xA5AFD00", result.CancelRva);
@@ -151,6 +157,7 @@ public sealed class PatternScanTests
     {
             (string Path, nuint ExpectedStart, nuint ExpectedCancel)[] builds =
         [
+            (@"C:\Program Files\Google\Chrome\Application\153.0.8010.37\chrome.dll", 0x09256B0, 0x0A85B640),
             (@"C:\Program Files\Google\Chrome\Application\152.0.7977.65\chrome.dll", 0x08BE450, 0x0A5A09C0),
             (@"C:\Program Files\Google\Chrome\Application\152.0.7977.76\chrome.dll", 0x099D910, 0x0A5AFD00),
             (@"C:\Program Files\CocCoc\Browser\Application\151.0.7922.176\browser.dll", 0x08BE1B0, 0x0AAF6950),

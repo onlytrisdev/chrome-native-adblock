@@ -676,7 +676,7 @@ public static class BatchYouTubeSmoke
         [JsonPropertyName("detectedVisibleElements")] public List<string> DetectedVisibleElements { get; set; } = [];
     }
 
-    private sealed class CdpClient : IAsyncDisposable
+    internal sealed class CdpClient : IAsyncDisposable
     {
         private readonly ClientWebSocket _ws = new();
         private readonly ConcurrentDictionary<int, TaskCompletionSource<JsonElement>> _pendingRequests = new();
@@ -751,6 +751,27 @@ public static class BatchYouTubeSmoke
             }
             catch { }
             return default;
+        }
+
+        public async Task<byte[]?> CaptureScreenshotAsync(CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var res = await SendCommandAsync("Page.captureScreenshot", new { format = "png" }, TimeSpan.FromSeconds(10), cancellationToken);
+                JsonElement dataVal = default;
+                var hasData = res.TryGetProperty("data", out dataVal) ||
+                              (res.TryGetProperty("result", out var r) && r.TryGetProperty("data", out dataVal));
+                if (hasData)
+                {
+                    var base64 = dataVal.GetString();
+                    if (!string.IsNullOrEmpty(base64))
+                    {
+                        return Convert.FromBase64String(base64);
+                    }
+                }
+            }
+            catch { }
+            return null;
         }
 
         private async Task ReceiveLoopAsync()

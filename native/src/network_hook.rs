@@ -64,7 +64,20 @@ const CHROME_152_0_7977_76: HookRule = HookRule {
     cancel_prefix: &[0x56, 0x57, 0x48, 0x81, 0xEC, 0x98, 0x00, 0x00, 0x00],
 };
 
-const KNOWN_HOOK_RULES: &[HookRule] = &[CHROME_152_0_7977_65, CHROME_152_0_7977_76];
+const CHROME_153_0_8010_37: HookRule = HookRule {
+    start_rva: 0x09256B0,
+    cancel_rva: 0x0A85B640,
+    url_chain_offset: 0x48,
+    gurl_size: 0x78,
+    start_prefix: &[0x41, 0x56, 0x56, 0x57, 0x53, 0x48, 0x83, 0xEC, 0x58],
+    cancel_prefix: &[0x56, 0x57, 0x48, 0x81, 0xEC, 0x98, 0x00, 0x00, 0x00],
+};
+
+const KNOWN_HOOK_RULES: &[HookRule] = &[
+    CHROME_152_0_7977_65,
+    CHROME_152_0_7977_76,
+    CHROME_153_0_8010_37,
+];
 
 // Masked wildcard signatures for net::URLRequest::Start and net::URLRequest::CancelWithError
 pub const SIG_URL_REQUEST_START: &str = "41 56 56 57 53 48 83 EC ? 48 89 CE 48 8B 05 ? ? ? ? 48 31 E0 48 89 44 24 ? \
@@ -702,19 +715,33 @@ unsafe fn request_url<'a>(request: *const u8) -> Option<&'a str> {
 
     let url_chain_offset = RESOLVED_URL_CHAIN_OFFSET.load(Ordering::Acquire);
     let gurl_size = RESOLVED_GURL_SIZE.load(Ordering::Acquire);
+    if gurl_size == 0 {
+        return None;
+    }
 
     let vector = unsafe { request.add(url_chain_offset) };
     let begin = unsafe { ptr::read_unaligned(vector.cast::<*const u8>()) };
-    let end = unsafe { ptr::read_unaligned(vector.add(8).cast::<*const u8>()) };
-    if begin.is_null() || end.is_null() || end <= begin {
-        return None;
-    }
-    let byte_length = (end as usize).checked_sub(begin as usize)?;
-    if byte_length % gurl_size != 0 || byte_length / gurl_size > 64 {
+    let end_or_count = unsafe { ptr::read_unaligned(vector.add(8).cast::<usize>()) };
+    if begin.is_null() || end_or_count == 0 {
         return None;
     }
 
-    let gurl = unsafe { end.sub(gurl_size) };
+    // Support both vector layouts:
+    // 1. Pointer pair: { begin, end, cap } where end > begin as usize (Chrome 152 and earlier)
+    // 2. Count based: { begin, count, cap } where count <= 64 (Chrome 153+)
+    let gurl = if end_or_count > begin as usize {
+        let byte_length = end_or_count.checked_sub(begin as usize)?;
+        if byte_length % gurl_size != 0 || byte_length / gurl_size > 64 {
+            return None;
+        }
+        unsafe { (end_or_count as *const u8).sub(gurl_size) }
+    } else if end_or_count <= 64 {
+        let count = end_or_count;
+        unsafe { begin.add((count - 1) * gurl_size) }
+    } else {
+        return None;
+    };
+
     // Chromium uses libc++'s 24-byte alternate string layout. Short
     // strings store data inline and a 7-bit size in byte 23; long strings use
     // {data*, size, 63-bit capacity} with the top capacity bit set.
@@ -1093,16 +1120,34 @@ mod tests {
     #[test]
     fn test_scan_real_chrome_dll_if_present() {
         let possible_paths = [
-            r"C:\Program Files\Google\Chrome\Application\152.0.7977.65\chrome.dll",
-            r"C:\Program Files (x86)\Google\Chrome\Application\152.0.7977.65\chrome.dll",
+            (
+                r"C:\Program Files\Google\Chrome\Application\153.0.8010.37\chrome.dll",
+                0x09256B0,
+                0x0A85B640,
+            ),
+            (
+                r"C:\Program Files\Google\Chrome\Application\152.0.7977.76\chrome.dll",
+                0x099D910,
+                0x0A5AFD00,
+            ),
+            (
+                r"C:\Program Files\Google\Chrome\Application\152.0.7977.65\chrome.dll",
+                0x08BE450,
+                0x0A5A09C0,
+            ),
+            (
+                r"C:\Program Files (x86)\Google\Chrome\Application\152.0.7977.65\chrome.dll",
+                0x08BE450,
+                0x0A5A09C0,
+            ),
         ];
 
-        for path in possible_paths {
+        for (path, exp_start, exp_cancel) in possible_paths {
             if std::path::Path::new(path).exists() {
                 let (start_rva, cancel_rva) =
                     scan_chrome_dll_file(path).expect("Failed to scan real chrome.dll");
-                assert_eq!(start_rva, 0x08BE450);
-                assert_eq!(cancel_rva, 0x0A5A09C0);
+                assert_eq!(start_rva, exp_start);
+                assert_eq!(cancel_rva, exp_cancel);
                 break;
             }
         }
@@ -1150,6 +1195,16 @@ mod tests {
     fn test_scan_multiple_chromium_builds_if_present() {
         let builds = [
             (
+                r"C:\Program Files\Google\Chrome\Application\153.0.8010.37\chrome.dll",
+                0x09256B0,
+                0x0A85B640,
+            ),
+            (
+                r"C:\Program Files\Google\Chrome\Application\152.0.7977.76\chrome.dll",
+                0x099D910,
+                0x0A5AFD00,
+            ),
+            (
                 r"C:\Program Files\Google\Chrome\Application\152.0.7977.65\chrome.dll",
                 0x08BE450,
                 0x0A5A09C0,
@@ -1187,5 +1242,42 @@ mod tests {
                 );
             }
         }
+    }
+
+    #[test]
+    fn test_request_url_decoding_pointer_and_count_layouts() {
+        RESOLVED_URL_CHAIN_OFFSET.store(0x48, Ordering::Release);
+        RESOLVED_GURL_SIZE.store(0x78, Ordering::Release);
+
+        // Construct synthetic URL: "http://example.com/ad" (21 chars, short string)
+        let url_str = "http://example.com/ad";
+        let mut gurl_buffer = vec![0u8; 0x78];
+        gurl_buffer[..url_str.len()].copy_from_slice(url_str.as_bytes());
+        gurl_buffer[23] = url_str.len() as u8; // short string tag and length
+
+        let begin_ptr = gurl_buffer.as_ptr();
+
+        // 1. Test Pointer Layout (Chrome 152 style: begin, end > begin, cap)
+        let mut req_ptr_layout = vec![0u8; 0x100];
+        let end_ptr = unsafe { begin_ptr.add(0x78) };
+        unsafe {
+            let vec_ptr = req_ptr_layout.as_mut_ptr().add(0x48);
+            std::ptr::write_unaligned(vec_ptr.cast::<*const u8>(), begin_ptr);
+            std::ptr::write_unaligned(vec_ptr.add(8).cast::<*const u8>(), end_ptr);
+            std::ptr::write_unaligned(vec_ptr.add(16).cast::<*const u8>(), end_ptr);
+        }
+        let parsed_ptr = unsafe { request_url(req_ptr_layout.as_ptr()) };
+        assert_eq!(parsed_ptr, Some(url_str));
+
+        // 2. Test Count Layout (Chrome 153 style: begin, count <= 64, cap)
+        let mut req_count_layout = vec![0u8; 0x100];
+        unsafe {
+            let vec_ptr = req_count_layout.as_mut_ptr().add(0x48);
+            std::ptr::write_unaligned(vec_ptr.cast::<*const u8>(), begin_ptr);
+            std::ptr::write_unaligned(vec_ptr.add(8).cast::<usize>(), 1usize);
+            std::ptr::write_unaligned(vec_ptr.add(16).cast::<usize>(), 1usize);
+        }
+        let parsed_count = unsafe { request_url(req_count_layout.as_ptr()) };
+        assert_eq!(parsed_count, Some(url_str));
     }
 }

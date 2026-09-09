@@ -36,7 +36,7 @@ internal static class CosmeticSmoke
             // 1. Check YouTube cosmetic rules
             var ytCosmetic = engine.GetUrlCosmeticResources("https://www.youtube.com/watch?v=smokeTest");
             var script = CosmeticInjector.BuildFullInjectionScript(engine);
-            var containsBypass = script.Contains("sanitizePlayerResponse") && script.Contains("skipVideoAds");
+            var containsBypass = script.Contains("sanitizePlayerResponse") && script.Contains("handlePlayerCleanup");
             var containsCss = script.Contains("cna-cosmetic-style");
             var cdpVerified = false;
             try
@@ -149,57 +149,68 @@ internal static class CosmeticSmoke
             });
             ws.SendAsync(navigate, WebSocketMessageType.Text, true, CancellationToken.None).GetAwaiter().GetResult();
 
-            // Wait for navigation
-            Thread.Sleep(600);
-
-            // 5. Evaluate to check if style was attached
-            var checkStyle = JsonSerializer.SerializeToUtf8Bytes(new
+            // Also evaluate immediately on current document
+            var evalScript = JsonSerializer.SerializeToUtf8Bytes(new
             {
-                id = 100,
+                id = 5,
                 method = "Runtime.evaluate",
-                @params = new
-                {
-                    expression = "Boolean(document.getElementById('cna-cosmetic-style'))",
-                    returnByValue = true
-                }
+                @params = new { expression = injectionScript }
             });
-            ws.SendAsync(checkStyle, WebSocketMessageType.Text, true, CancellationToken.None).GetAwaiter().GetResult();
+            ws.SendAsync(evalScript, WebSocketMessageType.Text, true, CancellationToken.None).GetAwaiter().GetResult();
 
-            var buffer = new byte[65536];
-            using var ms = new MemoryStream();
-            var receiveCts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
-            while (!receiveCts.IsCancellationRequested)
+            // Wait for navigation & script injection
+            Thread.Sleep(800);
+
+            // 5. Evaluate to check if style was attached, with retries if needed
+            for (var retry = 0; retry < 5; retry++)
             {
-                try
+                var evalId = 100 + retry;
+                var checkStyle = JsonSerializer.SerializeToUtf8Bytes(new
                 {
-                    var result = ws.ReceiveAsync(buffer, receiveCts.Token).GetAwaiter().GetResult();
-                    if (result.MessageType == WebSocketMessageType.Close) break;
-                    ms.Write(buffer, 0, result.Count);
-                    if (!result.EndOfMessage) continue;
-
-                    var responseJson = Encoding.UTF8.GetString(ms.ToArray());
-                    ms.SetLength(0);
-
-                    if (responseJson.Contains("\"id\":100") || responseJson.Contains("\"id\": 100"))
+                    id = evalId,
+                    method = "Runtime.evaluate",
+                    @params = new
                     {
-                        using var doc = JsonDocument.Parse(responseJson);
-                        if (doc.RootElement.TryGetProperty("result", out var resObj) &&
-                            resObj.TryGetProperty("result", out var innerRes) &&
-                            innerRes.TryGetProperty("value", out var val) &&
-                            val.GetBoolean())
+                        expression = "Boolean(document.getElementById('cna-cosmetic-style'))",
+                        returnByValue = true
+                    }
+                });
+                ws.SendAsync(checkStyle, WebSocketMessageType.Text, true, CancellationToken.None).GetAwaiter().GetResult();
+
+                var buffer = new byte[65536];
+                using var ms = new MemoryStream();
+                using var receiveCts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+                while (!receiveCts.IsCancellationRequested)
+                {
+                    try
+                    {
+                        var result = ws.ReceiveAsync(buffer, receiveCts.Token).GetAwaiter().GetResult();
+                        if (result.MessageType == WebSocketMessageType.Close) break;
+                        ms.Write(buffer, 0, result.Count);
+                        if (!result.EndOfMessage) continue;
+
+                        var responseJson = Encoding.UTF8.GetString(ms.ToArray());
+                        ms.SetLength(0);
+
+                        if (responseJson.Contains($"\"id\":{evalId}") || responseJson.Contains($"\"id\": {evalId}"))
                         {
-                            return true;
+                            using var doc = JsonDocument.Parse(responseJson);
+                            if (doc.RootElement.TryGetProperty("result", out var resObj) &&
+                                resObj.TryGetProperty("result", out var innerRes) &&
+                                innerRes.TryGetProperty("value", out var val) &&
+                                val.GetBoolean())
+                            {
+                                return true;
+                            }
+                            break; // Got response for this evalId but value was false, retry after brief sleep
                         }
                     }
+                    catch
+                    {
+                        break;
+                    }
                 }
-                catch (OperationCanceledException)
-                {
-                    break;
-                }
-                catch
-                {
-                    break;
-                }
+                Thread.Sleep(300);
             }
             return false;
         }
