@@ -1,0 +1,23 @@
+{
+  "chromeVersion": "154.0.8037.58",
+  "pdb": {
+    "file": "chrome.dll.pdb",
+    "guidAge": "1ECE2A61317A16774C4C44205044422E1"
+  },
+  "symbols": {
+    "net::URLRequest::Start": {
+      "rva": "0x01533400",
+      "prefix": "41 57 41 56 56 57 53 48 83 EC 60"
+    },
+    "net::URLRequest::CancelWithError": {
+      "rva": "0x0A9A4B80",
+      "prefix": "56 57 48 81 EC 98 00 00 00"
+    }
+  },
+  "layout": {
+    "net::URLRequest::url_chain_": "0x48",
+    "sizeof(GURL)": "0x78",
+    "sizeof(std::__Cr::vector<GURL>)": "0x18",
+    "sizeof(std::__Cr::string)": "0x18"
+  }
+}

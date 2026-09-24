@@ -1,4 +1,4 @@
-# Chrome Native Adblock v1.0.0 (Production Stable Release)
+# Chrome Native Adblock v1.0.5 (Production Release)
 
 High-performance 100% RAM-only native ad filtering and Manifest V2 enabler for
 stock Google Chrome on Windows.
@@ -27,8 +27,9 @@ collected by this project.
 
 ## Compatibility
 
-The native network hook supports **Chrome 152.0.7977.65 x64** and
-**Chrome 152.0.7977.76 x64**. Function RVAs, prologues, and `URLRequest`/`GURL`
+The native network hook supports **Chrome 154.0.8037.58 x64**,
+**Chrome 153.0.8010.37 x64**, **Chrome 152.0.7977.76 x64**, and
+**Chrome 152.0.7977.65 x64**. Function RVAs, prologues, and `URLRequest`/`GURL`
 layouts are recorded per build under `native/hook_rules/` and verified before
 installation.
 
@@ -51,7 +52,7 @@ or seek evidence cannot be verified; it does not count those cases as passes.
 
 ## Download
 
-Download `ChromeNativeAdblock-GUI-v1.0.1-win-x64.zip` from
+Download `ChromeNativeAdblock-GUI-v1.0.5-win-x64.zip` from
 [Releases](https://github.com/onlytrisdev/chrome-native-adblock/releases), extract
 the archive, and run `ChromeNativeAdblock.Gui.exe`.
 
@@ -83,7 +84,7 @@ dotnet run --project .\launcher\ChromeNativeAdblock.Launcher -c Release -- netwo
 Create release archives:
 
 ```powershell
-.\scripts\package-release.ps1 -Version v1.0.0
+.\scripts\package-release.ps1 -Version v1.0.5
 ```
 
 ## Security model

@@ -73,16 +73,31 @@ const CHROME_153_0_8010_37: HookRule = HookRule {
     cancel_prefix: &[0x56, 0x57, 0x48, 0x81, 0xEC, 0x98, 0x00, 0x00, 0x00],
 };
 
+const CHROME_154_0_8037_58: HookRule = HookRule {
+    start_rva: 0x01533400,
+    cancel_rva: 0x0A9A4B80,
+    url_chain_offset: 0x48,
+    gurl_size: 0x78,
+    start_prefix: &[
+        0x41, 0x57, 0x41, 0x56, 0x56, 0x57, 0x53, 0x48, 0x83, 0xEC, 0x60,
+    ],
+    cancel_prefix: &[0x56, 0x57, 0x48, 0x81, 0xEC, 0x98, 0x00, 0x00, 0x00],
+};
+
 const KNOWN_HOOK_RULES: &[HookRule] = &[
-    CHROME_152_0_7977_65,
-    CHROME_152_0_7977_76,
+    CHROME_154_0_8037_58,
     CHROME_153_0_8010_37,
+    CHROME_152_0_7977_76,
+    CHROME_152_0_7977_65,
 ];
 
 // Masked wildcard signatures for net::URLRequest::Start and net::URLRequest::CancelWithError
 pub const SIG_URL_REQUEST_START: &str = "41 56 56 57 53 48 83 EC ? 48 89 CE 48 8B 05 ? ? ? ? 48 31 E0 48 89 44 24 ? \
      48 8B 81 ? ? 00 00 48 8B 80 ? ? 00 00 83 B8 ? ? 00 00 00 0F 85 ? ? 00 00 \
      83 BE ? ? 00 00 00 0F 85 ? ? 00 00";
+
+pub const SIG_URL_REQUEST_START_V2: &str = "41 57 41 56 56 57 53 48 83 EC ? 48 89 CE 48 8B 05 ? ? ? ? 48 31 E0 48 89 44 24 ? \
+     48 8D 99 ? ? 00 00 48 8B 81 ? ? 00 00 48 8B 80 ? 00 00 00";
 
 pub const SIG_URL_REQUEST_CANCEL_WITH_ERROR: &str = "56 57 48 81 EC ? ? 00 00 48 8B 05 ? ? ? ? 48 31 E0 48 89 84 24 ? ? 00 00 \
      ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? \
@@ -932,8 +947,13 @@ pub fn scan_chrome_dll_bytes(data: &[u8]) -> Result<(usize, usize), String> {
     let cancel_pattern =
         Pattern::parse(SIG_URL_REQUEST_CANCEL_WITH_ERROR).map_err(|e| e.to_string())?;
 
-    let start_offset =
-        find_unique_pattern(text_slice, &start_pattern).map_err(|e| e.to_string())?;
+    let start_offset = find_unique_pattern(text_slice, &start_pattern)
+        .or_else(|_| {
+            let start_pattern_v2 =
+                Pattern::parse(SIG_URL_REQUEST_START_V2).map_err(|e| e.to_string())?;
+            find_unique_pattern(text_slice, &start_pattern_v2).map_err(|e| e.to_string())
+        })
+        .map_err(|e| e.to_string())?;
     let cancel_offset =
         find_cancel_with_error_pattern(text_slice, &cancel_pattern).map_err(|e| e.to_string())?;
     let start_rva = (text_sec.virtual_address as usize) + start_offset;
@@ -1009,6 +1029,9 @@ mod tests {
     #[test]
     fn test_prologue_safety_checks() {
         // Valid prologues
+        assert!(is_valid_prologue_start(&[
+            0x41, 0x57, 0x41, 0x56, 0x56, 0x57, 0x53, 0x48, 0x83, 0xEC, 0x60
+        ]));
         assert!(is_valid_prologue_start(&[
             0x41, 0x56, 0x56, 0x57, 0x53, 0x48, 0x83, 0xEC, 0x58
         ]));
@@ -1121,6 +1144,11 @@ mod tests {
     fn test_scan_real_chrome_dll_if_present() {
         let possible_paths = [
             (
+                r"C:\Program Files\Google\Chrome\Application\154.0.8037.58\chrome.dll",
+                0x01533400,
+                0x0A9A4B80,
+            ),
+            (
                 r"C:\Program Files\Google\Chrome\Application\153.0.8010.37\chrome.dll",
                 0x09256B0,
                 0x0A85B640,
@@ -1194,6 +1222,11 @@ mod tests {
     #[test]
     fn test_scan_multiple_chromium_builds_if_present() {
         let builds = [
+            (
+                r"C:\Program Files\Google\Chrome\Application\154.0.8037.58\chrome.dll",
+                0x01533400,
+                0x0A9A4B80,
+            ),
             (
                 r"C:\Program Files\Google\Chrome\Application\153.0.8010.37\chrome.dll",
                 0x09256B0,
